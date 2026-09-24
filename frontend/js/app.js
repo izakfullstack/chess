@@ -30,6 +30,7 @@ let playerPreviewCloseTimer = null;
 let playerPreviewOpenTimer = null;
 let playerPreviewPointerX = 0;
 let playerPreviewPointerY = 0;
+let activePlayerPreviewCard = null;
 let activeHistoryAccount = null;
 let historyLoading = false;
 let historyFinished = false;
@@ -138,6 +139,7 @@ function setupGlobalEvents() {
     document.addEventListener('mousemove', event => {
         playerPreviewPointerX = event.clientX;
         playerPreviewPointerY = event.clientY;
+        if (activePlayerPreviewCard && !isPointerInsideActivePlayerCard()) closePlayerPreview();
         positionPlayerPreviewAtPointer();
     }, { passive: true });
     const homeStart = document.getElementById('home-start');
@@ -1822,6 +1824,15 @@ function handleInfiniteListsScroll() {
     if (currentScreen === 'player-history' && activeHistoryAccount) loadPlayerHistoryPage(activeHistoryAccount, true);
 }
 
+function isPointerInsideActivePlayerCard() {
+    if (!activePlayerPreviewCard) return false;
+    const bounds = activePlayerPreviewCard.getBoundingClientRect();
+    return playerPreviewPointerX >= bounds.left
+        && playerPreviewPointerX <= bounds.right
+        && playerPreviewPointerY >= bounds.top
+        && playerPreviewPointerY <= bounds.bottom;
+}
+
 function positionPlayerPreviewAtPointer() {
     const preview = document.getElementById('player-preview');
     if (!preview || preview.classList.contains('hidden')) return;
@@ -1846,6 +1857,7 @@ window.openPlayerPreview = function(accountNumber, rowElement, pointerEvent) {
 
     if (playerPreviewOpenTimer) clearTimeout(playerPreviewOpenTimer);
     document.getElementById('player-preview')?.classList.add('hidden');
+    activePlayerPreviewCard = rowElement;
     previewAccountNumber = accountNumber;
     playerPreviewOpenTimer = setTimeout(() => {
         playerPreviewOpenTimer = null;
@@ -1856,6 +1868,10 @@ window.openPlayerPreview = function(accountNumber, rowElement, pointerEvent) {
             .then(games => {
                 const preview = document.getElementById('player-preview');
                 if (!preview || previewAccountNumber !== accountNumber) return;
+                if (!isPointerInsideActivePlayerCard()) {
+                    closePlayerPreview();
+                    return;
+                }
 
                 document.getElementById('player-preview-title').textContent = 'היסטוריית משחקים';
                 const gameList = games.length
@@ -1872,6 +1888,7 @@ function closePlayerPreview() {
     cancelPlayerPreviewClose();
     if (playerPreviewOpenTimer) clearTimeout(playerPreviewOpenTimer);
     playerPreviewOpenTimer = null;
+    activePlayerPreviewCard = null;
     document.getElementById('player-preview')?.classList.add('hidden');
 }
 
@@ -1881,10 +1898,7 @@ window.cancelPlayerPreviewClose = function() {
 };
 
 window.schedulePlayerPreviewClose = function() {
-    cancelPlayerPreviewClose();
-    if (playerPreviewOpenTimer) clearTimeout(playerPreviewOpenTimer);
-    playerPreviewOpenTimer = null;
-    playerPreviewCloseTimer = setTimeout(closePlayerPreview, 180);
+    closePlayerPreview();
 };
 
 window.openPreviewHistory = function() {
