@@ -123,7 +123,7 @@ function fenToBoard(fen) {
                 col += parseInt(char, 10);
             } else {
                 const isWhite = char === char.toUpperCase();
-                const pieceType = char.toLowerCase();
+                const pieceType = char.toLowerCase() === 'p' ? 'pawn' : char.toLowerCase();
                 board[row][col] = { type: pieceType, color: isWhite ? WHITE : BLACK };
                 col++;
             }
