@@ -1877,7 +1877,7 @@ function submitMoveToServer() {
         if (data.success) {
             // טעינה מחדש של המשחק לקבלת מצב מעודכן
             setTimeout(() => {
-                loadGame(currentGame.id);
+                loadGame(currentGame.id, historicalGameView, true);
             }, 1000);
         }
     })
