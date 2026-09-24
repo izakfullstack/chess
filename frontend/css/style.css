@@ -2878,24 +2878,38 @@ span.player-search input:focus {
 }
 
 /* Account settings */
+body:has(.account-settings-screen.active) {
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+body:has(.account-settings-screen.active) .site-header,
+body:has(.account-settings-screen.active) .site-footer {
+    display: none;
+}
+
 .main-content:has(.account-settings-screen.active) {
     width: 100%;
     max-width: none;
     padding: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 .account-settings-screen {
     width: 100%;
-    min-height: calc(100vh - 4.5rem);
-    min-height: calc(100dvh - 4.5rem);
+    min-height: 100vh;
+    min-height: 100dvh;
     margin: 0;
-    background: rgba(255, 255, 255, 0.28);
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.35)),
+        url('./image/background.png') center / cover fixed no-repeat;
 }
 
 .account-settings-shell {
-    width: 80%;
-    min-height: calc(100vh - 4.5rem);
-    min-height: calc(100dvh - 4.5rem);
+    width: 70%;
+    min-height: 100vh;
+    min-height: 100dvh;
     margin: 0 auto;
     padding: clamp(1.25rem, 4vw, 3rem);
     display: flex;
