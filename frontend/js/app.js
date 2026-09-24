@@ -1841,8 +1841,9 @@ function positionPlayerPreviewAtPointer() {
     const height = preview.offsetHeight;
     const maxLeft = Math.max(12, window.innerWidth - width - 12);
     const maxTop = Math.max(12, window.innerHeight - height - 12);
-    const left = Math.min(maxLeft, Math.max(12, playerPreviewPointerX - width));
-    const top = Math.min(maxTop, Math.max(12, playerPreviewPointerY - height));
+    const pointerGap = 10;
+    const left = Math.min(maxLeft, Math.max(12, playerPreviewPointerX - (width / 2)));
+    const top = Math.min(maxTop, Math.max(12, playerPreviewPointerY - height - pointerGap));
 
     preview.style.left = `${left}px`;
     preview.style.top = `${top}px`;
