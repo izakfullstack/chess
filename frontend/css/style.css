@@ -1199,7 +1199,7 @@ body.game-screen-active #center-board-global {
     border-radius: 8px;
     box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
     cursor: pointer;
-    transform: translateX(26px);
+    transform: none;
     font-size: 0.82rem;
     font-weight: 300;
     line-height: 1.25;

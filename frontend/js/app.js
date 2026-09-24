@@ -27,6 +27,8 @@ let previewAccountNumber = null;
 let historicalGameView = false;
 let playerHistoryOffset = 0;
 let playerPreviewCloseTimer = null;
+let playerPreviewPointerX = 0;
+let playerPreviewPointerY = 0;
 let activeHistoryAccount = null;
 let historyLoading = false;
 let historyFinished = false;
@@ -132,6 +134,11 @@ function setupGlobalEvents() {
     setupAdminEvents();
     setupMobileMenu();
     window.addEventListener('scroll', handleInfiniteListsScroll, { passive: true });
+    document.addEventListener('mousemove', event => {
+        playerPreviewPointerX = event.clientX;
+        playerPreviewPointerY = event.clientY;
+        positionPlayerPreviewAtPointer();
+    }, { passive: true });
     const homeStart = document.getElementById('home-start');
     if (homeStart) {
         homeStart.addEventListener('click', () => {
@@ -871,7 +878,7 @@ function loadMatchmakingPlayers() {
             // ריחוף = חלון תצוגה מקדימה, לחיצה = דף היסטוריית השחקן
             list.innerHTML = players.length ? players.map(player => `
                 <article class="player-match-card" data-player-account="${player.accountNumber}" tabindex="0"
-                    onmouseenter="cancelPlayerPreviewClose(); openPlayerPreview('${player.accountNumber}', this)"
+                    onmouseenter="cancelPlayerPreviewClose(); openPlayerPreview('${player.accountNumber}', this, event)"
                     onmouseleave="schedulePlayerPreviewClose()"
                     onclick="openPlayerHistory('${player.accountNumber}')"
                     onkeydown="if (event.key === 'Enter') openPlayerHistory('${player.accountNumber}')">
@@ -1814,7 +1821,27 @@ function handleInfiniteListsScroll() {
     if (currentScreen === 'player-history' && activeHistoryAccount) loadPlayerHistoryPage(activeHistoryAccount, true);
 }
 
-window.openPlayerPreview = function(accountNumber, rowElement) {
+function positionPlayerPreviewAtPointer() {
+    const preview = document.getElementById('player-preview');
+    if (!preview || preview.classList.contains('hidden')) return;
+
+    const width = preview.offsetWidth;
+    const height = preview.offsetHeight;
+    const maxLeft = Math.max(12, window.innerWidth - width - 12);
+    const maxTop = Math.max(12, window.innerHeight - height - 12);
+    const left = Math.min(maxLeft, Math.max(12, playerPreviewPointerX - width));
+    const top = Math.min(maxTop, Math.max(12, playerPreviewPointerY - height));
+
+    preview.style.left = `${left}px`;
+    preview.style.top = `${top}px`;
+    preview.style.right = 'auto';
+}
+
+window.openPlayerPreview = function(accountNumber, rowElement, pointerEvent) {
+    if (pointerEvent) {
+        playerPreviewPointerX = pointerEvent.clientX;
+        playerPreviewPointerY = pointerEvent.clientY;
+    }
     previewAccountNumber = accountNumber;
     fetch(`/api/users/player/${accountNumber}/history`)
         .then(response => response.json())
@@ -1825,26 +1852,7 @@ window.openPlayerPreview = function(accountNumber, rowElement) {
                 ? games.slice(0, 3).map(game => `<button class="preview-game" type="button" onclick="openHistoricalGame(${game.id})">${accountNumber} מול ${game.opponentAccount}<small>${game.result} | ${game.moveCount} תורים</small></button>`).join('')
                 : '<p>אין עדיין משחקים בהיסטוריה.</p>';
             preview.classList.remove('hidden');
-            if (rowElement) {
-                const row = rowElement.getBoundingClientRect();
-                const table = rowElement.closest('table');
-                const tableBounds = table ? table.getBoundingClientRect() : row;
-                // עובד גם על שורות טבלה וגם על משבצות שחקנים (כרטיסים ללא tablol cells)
-                const isTableCell = Boolean(rowElement.cells);
-                const gamesColumn = isTableCell ? rowElement.cells[3]?.getBoundingClientRect() : null;
-                const lossesColumn = isTableCell ? rowElement.cells[5]?.getBoundingClientRect() : null;
-                const targetCenter = gamesColumn && lossesColumn
-                    ? (gamesColumn.left + lossesColumn.right) / 2
-                    : (isTableCell ? tableBounds.left + 42 : row.left + (row.width / 2));
-                const centeredLeft = targetCenter - (preview.offsetWidth / 2);
-                preview.style.left = `${Math.min(
-                    Math.max(12, centeredLeft),
-                    window.innerWidth - preview.offsetWidth - 12
-                )}px`;
-                preview.style.right = 'auto';
-                const centeredTop = row.top + ((row.height - preview.offsetHeight) / 2);
-                preview.style.top = `${Math.max(12, centeredTop)}px`;
-            }
+            positionPlayerPreviewAtPointer();
         });
 };
 
