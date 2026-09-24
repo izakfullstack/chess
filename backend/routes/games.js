@@ -58,14 +58,14 @@ router.get('/matchmaking/players', async (req, res) => {
                 SELECT u.id, u.account_number AS "accountNumber", CASE WHEN u.show_full_name = 1 THEN u.full_name ELSE NULL END AS "fullName",
                        COALESCE(a.is_available, 0) AS "isAvailable",
                        r.rating, r.games_played AS "gamesPlayed", r.wins, r.losses,
-                       ROW_NUMBER() OVER (ORDER BY COALESCE(r.rating, 1200) DESC, u.account_number) AS "rank"
+                       ROW_NUMBER() OVER (ORDER BY COALESCE(r.wins, 0) DESC, COALESCE(r.rating, 1200) DESC, u.account_number) AS "rank"
                 FROM users u
                 LEFT JOIN player_availability a ON a.user_id = u.id
                 LEFT JOIN ratings r ON r.user_id = u.id
                 WHERE u.email_verified = 1
             ) ranked
             WHERE ranked.id != ?
-            ORDER BY "isAvailable" DESC, "rank" DESC, "accountNumber"`, [currentUser.id]);
+            ORDER BY "isAvailable" DESC, COALESCE(wins, 0) DESC, COALESCE(rating, 1200) DESC, "accountNumber"`, [currentUser.id]);
 
         res.json(players.map(player => ({
             ...player,

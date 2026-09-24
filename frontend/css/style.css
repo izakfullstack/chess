@@ -2562,39 +2562,53 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
 
 .player-match-card > .player-card-head {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.6rem;
     justify-content: space-between;
+    direction: rtl;
 }
 
-.player-card-rank {
-    font-weight: 700;
-    color: var(--primary);
-    min-width: 2.4rem;
-    text-align: center;
-    padding: 0.15rem 0.4rem;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-}
-
-.player-card-id {
-    display: grid;
-    gap: 0.1rem;
+.player-card-name {
     flex: 1;
     min-width: 0;
-}
-
-.player-match-card > .player-card-head .player-card-id strong {
     color: var(--text-primary);
     font-size: 0.95rem;
+    text-align: right;
     overflow-wrap: anywhere;
 }
 
+.player-match-card > .player-card-head .availability-status {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    white-space: nowrap;
+}
+
+.player-card-meta-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    direction: rtl;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(184, 150, 98, 0.22);
+}
+
 .player-card-account {
+    flex: 1;
+    min-width: 0;
     color: var(--text-muted);
     font-size: 0.78rem;
     font-family: 'Courier New', monospace;
+    text-align: right;
+}
+
+.player-card-rank {
+    flex: 0 0 auto;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-align: left;
 }
 
 .player-card-stats {

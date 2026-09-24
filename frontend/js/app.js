@@ -876,12 +876,12 @@ function loadMatchmakingPlayers() {
                     onclick="openPlayerHistory('${player.accountNumber}')"
                     onkeydown="if (event.key === 'Enter') openPlayerHistory('${player.accountNumber}')">
                     <div class="player-card-head">
-                        <span class="player-card-rank">#${player.rank || '-'}</span>
-                        <div class="player-card-id">
-                            <strong>${escapeHtml(player.fullName || '')}</strong>
-                            <span class="player-card-account">חשבון ${player.accountNumber}</span>
-                        </div>
+                        <strong class="player-card-name ${player.fullName ? '' : 'hidden'}">${escapeHtml(player.fullName || '')}</strong>
                         <span class="availability-status ${player.isAvailable ? 'online' : ''}">${player.isAvailable ? 'זמין' : 'לא זמין'}</span>
+                    </div>
+                    <div class="player-card-meta-line">
+                        <span class="player-card-account">מספר שחקן ${player.accountNumber}</span>
+                        <span class="player-card-rank">דירוג ${player.rank || '-'}</span>
                     </div>
                     <div class="player-card-stats">
                         <span><small>ניקוד</small><strong>${player.rating}</strong></span>
