@@ -35,6 +35,7 @@ let activeHistoryAccount = null;
 let historyLoading = false;
 let historyFinished = false;
 let previousScreenBeforeHistory = 'games';
+let previousScreenBeforeSettings = 'home';
 let pendingLeaveScreen = null;
 let gamePollTimer = null;
 let sentInvitePollTimer = null;
@@ -215,9 +216,12 @@ function setupGlobalEvents() {
     document.getElementById('back-from-admin')?.addEventListener('click', () => showScreen('home'));
     document.getElementById('profile-settings')?.addEventListener('click', () => {
         document.getElementById('profile-menu')?.classList.add('hidden');
-        if (auth.requireAuth('יש להתחבר כדי לפתוח הגדרות חשבון')) showScreen('account-settings');
+        if (auth.requireAuth('יש להתחבר כדי לפתוח הגדרות חשבון')) {
+            previousScreenBeforeSettings = currentScreen;
+            showScreen('account-settings');
+        }
     });
-    document.getElementById('back-from-account-settings')?.addEventListener('click', () => showScreen('home'));
+    document.getElementById('back-from-account-settings')?.addEventListener('click', () => showScreen(previousScreenBeforeSettings || 'home'));
     const showFullNameToggle = document.getElementById('show-full-name');
     if (showFullNameToggle) showFullNameToggle.addEventListener('change', markAccountSettingsDirty);
     document.getElementById('save-account-settings')?.addEventListener('click', saveAccountSettings);
