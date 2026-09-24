@@ -1205,6 +1205,23 @@ body.game-screen-active #center-board-global {
     line-height: 1.25;
 }
 
+.player-preview-empty {
+    margin: 0 0 0.45rem;
+    color: #6b4f3a;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.player-preview-full-history-hint {
+    display: block;
+    margin-top: 0.45rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid #eadfd5;
+    color: #6b4f3a;
+    font-size: 0.68rem;
+    line-height: 1.3;
+}
+
 .player-preview-header {
     margin-bottom: 0.35rem;
     font-size: 0.88rem;

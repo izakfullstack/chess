@@ -27,6 +27,7 @@ let previewAccountNumber = null;
 let historicalGameView = false;
 let playerHistoryOffset = 0;
 let playerPreviewCloseTimer = null;
+let playerPreviewOpenTimer = null;
 let playerPreviewPointerX = 0;
 let playerPreviewPointerY = 0;
 let activeHistoryAccount = null;
@@ -1842,22 +1843,34 @@ window.openPlayerPreview = function(accountNumber, rowElement, pointerEvent) {
         playerPreviewPointerX = pointerEvent.clientX;
         playerPreviewPointerY = pointerEvent.clientY;
     }
+
+    if (playerPreviewOpenTimer) clearTimeout(playerPreviewOpenTimer);
     previewAccountNumber = accountNumber;
-    fetch(`/api/users/player/${accountNumber}/history`)
-        .then(response => response.json())
-        .then(games => {
-            const preview = document.getElementById('player-preview');
-            document.getElementById('player-preview-title').textContent = `היסטוריה: ${accountNumber}`;
-            document.getElementById('player-preview-content').innerHTML = games.length
-                ? games.slice(0, 3).map(game => `<button class="preview-game" type="button" onclick="openHistoricalGame(${game.id})">${accountNumber} מול ${game.opponentAccount}<small>${game.result} | ${game.moveCount} תורים</small></button>`).join('')
-                : '<p>אין עדיין משחקים בהיסטוריה.</p>';
-            preview.classList.remove('hidden');
-            positionPlayerPreviewAtPointer();
-        });
+    playerPreviewOpenTimer = setTimeout(() => {
+        playerPreviewOpenTimer = null;
+        if (previewAccountNumber !== accountNumber) return;
+
+        fetch(`/api/users/player/${accountNumber}/history`)
+            .then(response => response.json())
+            .then(games => {
+                const preview = document.getElementById('player-preview');
+                if (!preview || previewAccountNumber !== accountNumber) return;
+
+                document.getElementById('player-preview-title').textContent = 'היסטוריית משחקים';
+                const gameList = games.length
+                    ? games.slice(0, 3).map(game => `<button class="preview-game" type="button" onclick="openHistoricalGame(${game.id})">${accountNumber} מול ${game.opponentAccount}<small>${game.result} | ${game.moveCount} תורים</small></button>`).join('')
+                    : '<p class="player-preview-empty">אין עדיין משחקים בהיסטוריה.</p>';
+                document.getElementById('player-preview-content').innerHTML = `${gameList}<span class="player-preview-full-history-hint">לחץ על משבצת השחקן להיסטוריית המשחקים המלאה</span>`;
+                preview.classList.remove('hidden');
+                positionPlayerPreviewAtPointer();
+            });
+    }, 2000);
 };
 
 function closePlayerPreview() {
     cancelPlayerPreviewClose();
+    if (playerPreviewOpenTimer) clearTimeout(playerPreviewOpenTimer);
+    playerPreviewOpenTimer = null;
     document.getElementById('player-preview')?.classList.add('hidden');
 }
 
@@ -1868,6 +1881,8 @@ window.cancelPlayerPreviewClose = function() {
 
 window.schedulePlayerPreviewClose = function() {
     cancelPlayerPreviewClose();
+    if (playerPreviewOpenTimer) clearTimeout(playerPreviewOpenTimer);
+    playerPreviewOpenTimer = null;
     playerPreviewCloseTimer = setTimeout(closePlayerPreview, 180);
 };
 
