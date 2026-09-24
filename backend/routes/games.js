@@ -817,7 +817,9 @@ router.get('/:id', (req, res) => {
                             fen: boardToFen(board)
                         });
                     }
-                    const currentTurn = moveHistory.length % 2 === 0 ? WHITE : BLACK;
+                    const currentTurn = moves.length === 0
+                        ? (game.player1_color || WHITE)
+                        : (moves[moves.length - 1].color === WHITE ? BLACK : WHITE);
                     const requesterColor = requesterAccount === String(game.player1_number) ? (game.player1_color || currentTurn)
                         : requesterAccount === String(game.player2_number) ? (game.player2_color || (currentTurn === WHITE ? BLACK : WHITE)) : null;
                     const canRequestMoves = game.status === 'active' && (!requesterAccount || requesterColor === currentTurn);
@@ -896,7 +898,9 @@ router.post('/:id/move', (req, res) => {
                         lastMove = { ...move, fromRow: from.row, fromCol: from.col, toRow: to.row, toCol: to.col, fromSquare: move.from_square, toSquare: move.to_square };
                     }
 
-                    const currentPlayer = moves.length % 2 === 0 ? WHITE : BLACK;
+                    const currentPlayer = moves.length === 0
+                        ? (game.player1_color || WHITE)
+                        : (moves[moves.length - 1].color === WHITE ? BLACK : WHITE);
                     const from = notationToSquare(playerFrom);
                     const to = notationToSquare(playerTo);
                     const piece = board[from.row]?.[from.col];
@@ -1030,6 +1034,7 @@ router.post('/:id/complete', (req, res) => {
                         }
 
                         updateGameStatusAndRating(gameId, winnerId);
+                        return res.json({ success: true, gameId, winnerId });
                     }
                 );
             } else {

@@ -50,6 +50,20 @@ const BOARD_DEFAULT_TILT = '30deg';
 const BOARD_DEFAULT_TOP_OFFSET = '-4rem';
 const BOARD_MAX_TILT = 38;
 
+const VALID_SCREENS = new Set([
+    'home', 'auth', 'games', 'dashboard', 'account-settings', 'game',
+    'player-history', 'admin-login', 'admin'
+]);
+
+function getPreviousScreen(fallback = 'home') {
+    while (screenHistory.length) {
+        const candidate = screenHistory[screenHistory.length - 1];
+        if (VALID_SCREENS.has(candidate)) return candidate;
+        screenHistory.pop();
+    }
+    return VALID_SCREENS.has(fallback) ? fallback : 'home';
+}
+
 function getUserStateKey(name) {
     return auth.currentUser ? `chess_${auth.currentUser.accountNumber}_${name}` : null;
 }
@@ -284,6 +298,7 @@ function setupGlobalEvents() {
 function showScreen(screenName) {
     // דף הדירוג מוזג לתוך דף "שחקנים"
     if (screenName === 'ranking') screenName = 'games';
+    if (!VALID_SCREENS.has(screenName)) screenName = 'home';
     if (screenName === currentScreen) return;
 
     if (shouldWarnBeforeLeavingGame(screenName)) {
@@ -300,7 +315,7 @@ function showScreen(screenName) {
 }
 
 function goBack(fallback = 'home') {
-    const previousScreen = screenHistory[screenHistory.length - 1] || fallback;
+    const previousScreen = getPreviousScreen(fallback);
     if (shouldWarnBeforeLeavingGame(previousScreen)) {
         pendingLeaveScreen = previousScreen;
         leaveConfirmationInProgress = false;
@@ -309,7 +324,7 @@ function goBack(fallback = 'home') {
         document.getElementById('leave-game-dialog').classList.remove('hidden');
         return;
     }
-    screenHistory.pop();
+    if (screenHistory[screenHistory.length - 1] === previousScreen) screenHistory.pop();
     applyScreen(previousScreen);
 }
 
@@ -1530,9 +1545,17 @@ function renderChessBoard(fen, currentTurn) {
                 || piece?.color === currentGame.currentTurn
             ) ? selectedSquare : null;
             const isSelectedSquare = selectedPiece && selectedPiece.row === row && selectedPiece.col === col;
-            const canMoveTo = selectedPiece && legalMoves.some(move =>
-                move.from.row === selectedPiece.row && move.from.col === selectedPiece.col &&
-                move.to.row === row && move.to.col === col);
+            const canMoveTo = selectedPiece && (
+                legalMoves.some(move =>
+                    move.from.row === selectedPiece.row && move.from.col === selectedPiece.col &&
+                    move.to.row === row && move.to.col === col)
+                || (piece && selectedSquare && game.isValidMove(
+                    board,
+                    { row: selectedSquare.row, col: selectedSquare.col },
+                    { row, col },
+                    board[selectedSquare.row]?.[selectedSquare.col]
+                ))
+            );
             const squareClasses = [`square`, (row + col) % 2 === 0 ? 'light' : 'dark'];
             const isCaptureTarget = Boolean(canMoveTo && piece && piece.color !== currentGame.currentTurn);
             if (isSelectedSquare) squareClasses.push('selected-square');
