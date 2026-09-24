@@ -37,6 +37,7 @@ let historyFinished = false;
 let previousScreenBeforeHistory = 'games';
 const screenHistory = [];
 let pendingLeaveScreen = null;
+let leaveConfirmationInProgress = false;
 let gamePollTimer = null;
 let sentInvitePollTimer = null;
 let sentInvitePollInitialized = false;
@@ -46,6 +47,7 @@ let accountSettingsDirty = false;
 const BOARD_DEFAULT_PAN_Y = '-3rem';
 const BOARD_DEFAULT_TILT = '30deg';
 const BOARD_DEFAULT_TOP_OFFSET = '-4rem';
+const BOARD_MAX_TILT = 88;
 
 function getUserStateKey(name) {
     return auth.currentUser ? `chess_${auth.currentUser.accountNumber}_${name}` : null;
@@ -268,29 +270,6 @@ function setupGlobalEvents() {
     if (gamePrev) gamePrev.addEventListener('click', () => navigateMove(-1));
     if (gameNext) gameNext.addEventListener('click', () => navigateMove(1));
 
-    // שליחת מהלך
-    const submitMove = document.getElementById('submit-move');
-    if (submitMove) {
-        submitMove.addEventListener('click', submitMoveToServer);
-    }
-
-    // קלט מהלך (אפשר מקש Enter)
-    const moveFrom = document.getElementById('move-from');
-    const moveTo = document.getElementById('move-to');
-    if (moveFrom && moveTo) {
-        moveFrom.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                submitMoveToServer();
-            }
-        });
-        moveTo.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                submitMoveToServer();
-            }
-        });
-    }
 }
 
 /**
@@ -304,6 +283,9 @@ function showScreen(screenName) {
 
     if (shouldWarnBeforeLeavingGame(screenName)) {
         pendingLeaveScreen = screenName;
+        leaveConfirmationInProgress = false;
+        const confirmButton = document.getElementById('leave-game-yes');
+        if (confirmButton) confirmButton.disabled = false;
         document.getElementById('leave-game-dialog').classList.remove('hidden');
         return;
     }
@@ -316,6 +298,9 @@ function goBack(fallback = 'home') {
     const previousScreen = screenHistory[screenHistory.length - 1] || fallback;
     if (shouldWarnBeforeLeavingGame(previousScreen)) {
         pendingLeaveScreen = previousScreen;
+        leaveConfirmationInProgress = false;
+        const confirmButton = document.getElementById('leave-game-yes');
+        if (confirmButton) confirmButton.disabled = false;
         document.getElementById('leave-game-dialog').classList.remove('hidden');
         return;
     }
@@ -398,6 +383,9 @@ function shouldWarnBeforeLeavingGame(targetScreen) {
 
 function cancelLeaveGame() {
     pendingLeaveScreen = null;
+    leaveConfirmationInProgress = false;
+    const confirmButton = document.getElementById('leave-game-yes');
+    if (confirmButton) confirmButton.disabled = false;
     document.getElementById('leave-game-dialog').classList.add('hidden');
 }
 
@@ -405,6 +393,10 @@ function cancelLeaveGame() {
  * אישור יציאה: המשחק הופך לכניעה (היריב מנצח) ثم ניווט למסך היעד
  */
 function confirmLeaveGame() {
+    if (leaveConfirmationInProgress) return;
+    leaveConfirmationInProgress = true;
+    const confirmButton = document.getElementById('leave-game-yes');
+    if (confirmButton) confirmButton.disabled = true;
     document.getElementById('leave-game-dialog').classList.add('hidden');
     const target = pendingLeaveScreen;
     pendingLeaveScreen = null;
@@ -1369,23 +1361,7 @@ function loadGame(gameId, historical = false, silent = false) {
             gameStatus.className = `game-status status-${game.status}`;
             gameStatus.style.display = !historical && game.status === 'active' ? 'inline-block' : 'none';
 
-            // הצגה/הסתרה של קלט מהלך לפי סטטוס ותור
-            const moveInput = document.getElementById('game-move-input');
-            const isUserTurn = (game.currentTurn === 'white' && auth.currentUser.accountNumber === game.player1Account && game.player1Color === 'white') ||
-                               (game.currentTurn === 'white' && auth.currentUser.accountNumber === game.player2Account && game.player2Color === 'white') ||
-                               (game.currentTurn === 'black' && auth.currentUser.accountNumber === game.player1Account && game.player1Color === 'black') ||
-                               (game.currentTurn === 'black' && auth.currentUser.accountNumber === game.player2Account && game.player2Color === 'black');
-
-            if (!historical && game.status === 'active' && isUserTurn) {
-                moveInput.style.display = 'flex';
-            } else {
-                moveInput.style.display = 'none';
-            }
-
-            // ניקוי קלט מהלך
-            document.getElementById('move-from').value = '';
-            document.getElementById('move-to').value = '';
-
+            // המשחק מתבצע באמצעות לחיצה ישירה על ריבועי הלוח.
             // הפעלת רענון בזמן אמת למשחק פעיל (כדי ששני השחקנים יראו כל מהלך)
             if (game.status === 'active' && !historical) startGamePolling(game.id);
             else stopGamePolling();
@@ -1443,7 +1419,7 @@ function setupBoardControls() {
     let startPanX = 0;
     let startPanY = 0;
     let startRotate = 0;
-    let startTilt = 12;
+    let startTilt = 0;
     let pointerCaptured = false;
 
     const DRAG_THRESHOLD = 4;
@@ -1496,7 +1472,7 @@ function setupBoardControls() {
 
         const nextRotation = startRotate - deltaX * 0.22;
         board.style.setProperty('--board-rotate', `${nextRotation}deg`);
-        const nextTilt = Math.max(0, Math.min(90, startTilt - deltaY * 0.25));
+        const nextTilt = Math.max(0, Math.min(BOARD_MAX_TILT, startTilt - deltaY * 0.25));
         board.style.setProperty('--board-tilt-x', `${nextTilt}deg`);
     });
 
@@ -1650,10 +1626,8 @@ function handleSquareClick(row, col) {
         const move = legalMoves.find(item =>
             item.from.row === selectedSquare.row && item.from.col === selectedSquare.col && item.to.row === row && item.to.col === col);
         if (move) {
-            document.getElementById('move-from').value = notationFromSquare(move.from);
-            document.getElementById('move-to').value = notationFromSquare(move.to);
             selectedSquare = null;
-            submitMoveToServer();
+            submitMoveToServer(notationFromSquare(move.from), notationFromSquare(move.to), move.promotion);
             return;
         }
     }
@@ -1707,10 +1681,8 @@ function handleDrop(e) {
         const fromSquare = game.squareToNotation(parseInt(fromRow), parseInt(fromCol));
         const toSquare = game.squareToNotation(toRow, toCol);
 
-        // שליחת מהלך
-        document.getElementById('move-from').value = fromSquare;
-        document.getElementById('move-to').value = toSquare;
-        submitMoveToServer();
+        // שליחת המהלך שנבחר ישירות מהלוח
+        submitMoveToServer(fromSquare, toSquare);
     }
 }
 
@@ -1831,11 +1803,11 @@ function handleNewGameSubmit(e) {
 /**
  * שליחת מהלך לשרת
  */
-function submitMoveToServer() {
+function submitMoveToServer(fromSquare, toSquare, promotion = null) {
     if (!currentGame) return;
 
-    const moveFrom = document.getElementById('move-from').value.trim().toLowerCase();
-    const moveTo = document.getElementById('move-to').value.trim().toLowerCase();
+    const moveFrom = String(fromSquare || '').trim().toLowerCase();
+    const moveTo = String(toSquare || '').trim().toLowerCase();
     const gameMessage = document.getElementById('game-message');
 
     if (!moveFrom || !moveTo) {
@@ -1860,6 +1832,7 @@ function submitMoveToServer() {
         body: JSON.stringify({
             playerFrom: moveFrom,
             playerTo: moveTo,
+            promotion,
             accountNumber: auth.currentUser?.accountNumber
         })
     })
@@ -1871,8 +1844,8 @@ function submitMoveToServer() {
             return;
         }
 
-        gameMessage.textContent = data.success ? 'מהלך נשלח בהצלחה!' : 'מהלך נכשל';
-        gameMessage.className = data.success ? 'form-message success' : 'form-message error';
+        gameMessage.textContent = '';
+        gameMessage.className = 'form-message';
 
         if (data.success) {
             // טעינה מחדש של המשחק לקבלת מצב מעודכן

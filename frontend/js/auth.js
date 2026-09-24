@@ -334,6 +334,9 @@ function handleLogout() {
     // אם השחקן באמצע משחק פעיל — תחילה אזהרת כניעה, ורק לאחר אישור מפנים
     if (typeof shouldWarnBeforeLeavingGame === 'function' && shouldWarnBeforeLeavingGame('home')) {
         pendingLeaveScreen = '__logout__';
+        if (typeof leaveConfirmationInProgress !== 'undefined') leaveConfirmationInProgress = false;
+        const confirmButton = document.getElementById('leave-game-yes');
+        if (confirmButton) confirmButton.disabled = false;
         document.getElementById('leave-game-dialog').classList.remove('hidden');
         return;
     }

@@ -316,11 +316,6 @@
                         <span id="game-move-number" class="move-number">מהלך 0</span>
                         <button id="game-next" class="btn btn-secondary">הבא</button>
                     </div>
-                    <div id="game-move-input" class="move-input-area">
-                        <input id="move-from" type="text" maxlength="2" placeholder="מא" required>
-                        <input id="move-to" type="text" maxlength="2" placeholder="אל" required>
-                        <button id="submit-move" class="btn btn-primary">העברת מהלך</button>
-                    </div>
                     <p id="game-message" class="form-message"></p>
                 </div>
             </div>
@@ -408,7 +403,7 @@
     <!-- אזהרת יציאה באמצע משחק (כניעה) -->
     <div id="leave-game-dialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="leave-game-title">
         <div class="invitation-dialog panel">
-            <h2 id="leave-game-title">אתה באמצע משחק!</h2>
+            <h2 id="leave-game-title">אתה במהלך משחק האם אתה בטוח שברצונך לצאת?</h2>
             <p>יציאה במהלך משחק נחשבת ל<strong>כניעה (הפסד)</strong>. האם ברצונך לצאת?</p>
             <div class="dialog-actions">
                 <button id="leave-game-yes" class="btn btn-danger" type="button">צא בכל זאת</button>
@@ -453,6 +448,6 @@
     <script src="/js/auth.js"></script>
     <script src="/js/game.js"></script>
     <script src="/js/rating.js"></script>
-    <script src="/js/app.js?v=20260924-revert-grid-1"></script>
+    <script src="/js/app.js?v=20260924-game-layout-1"></script>
 </body>
 </html>
