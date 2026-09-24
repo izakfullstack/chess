@@ -2580,6 +2580,7 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
 .player-match-card > .player-card-head .availability-status {
     flex: 0 0 auto;
     align-self: flex-start;
+    margin-left: auto;
     white-space: nowrap;
 }
 
@@ -2587,10 +2588,11 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.6rem;
-    direction: rtl;
+    gap: 1rem;
+    direction: ltr;
     padding-top: 0.35rem;
-    border-top: 1px solid rgba(184, 150, 98, 0.22);
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(184, 150, 98, 0.22);
 }
 
 .player-card-account {
@@ -2599,7 +2601,7 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
     color: var(--text-muted);
     font-size: 0.78rem;
     font-family: 'Courier New', monospace;
-    text-align: right;
+    text-align: left;
 }
 
 .player-card-rank {
@@ -2608,7 +2610,7 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
     font-size: 0.78rem;
     font-weight: 700;
     white-space: nowrap;
-    text-align: left;
+    text-align: right;
 }
 
 .player-card-stats {
