@@ -1,0 +1,29 @@
+{
+  "name": "chess-tournament",
+  "version": "1.0.0",
+  "description": "A chess tournament platform with rating system",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "nodemailer": "^7.0.6",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "chess",
+    "tournament",
+    "rating",
+    "elo"
+  ],
+  "author": "",
+  "license": "ISC"
+}

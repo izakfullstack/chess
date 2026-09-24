@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פלטפורמת תחרויות שחמט</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div id="verification-message" class="verification-message hidden" role="status" aria-live="polite">החשבון אומת בהצלחה</div>
+    <header class="site-header">
+        <div class="header-content">
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-label="פתיחת תפריט" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <div id="mobile-menu" class="header-left mobile-menu">
+                <button id="login-open" class="btn btn-primary public-auth-control">התחבר</button>
+                <button id="register-open" class="btn btn-secondary public-auth-control">הירשם</button>
+                <div id="connected-account" class="connected-account hidden">
+                    <button id="profile-open" class="profile-button" type="button" aria-label="פרופיל משתמש"><span id="profile-initials">00</span></button>
+                    <button id="logout" class="btn btn-danger" type="button">התנתק</button>
+                    <div id="profile-menu" class="profile-menu hidden" role="dialog" aria-label="פרופיל אישי">
+                        <button id="profile-settings" class="profile-settings" type="button" aria-label="הגדרות"><span aria-hidden="true"></span></button>
+                        <h3>פרופיל אישי</h3>
+                        <div class="personal-rating-card">
+                            <div class="rating-circle"><span id="profile-menu-rating">1200</span><small>ניקוד</small></div>
+                            <div class="rating-details">
+                                <p><strong>משחקים:</strong> <span id="profile-menu-games">0</span></p>
+                                <p><strong>ניצחונות:</strong> <span id="profile-menu-wins">0</span></p>
+                                <p><strong>הפסדים:</strong> <span id="profile-menu-losses">0</span></p>
+                            </div>
+                        </div>
+                        <button id="profile-history" class="profile-history-link" type="button">היסטוריית משחקים</button>
+                    </div>
+                </div>
+                <button type="button" class="players-button">שחקנים</button>
+                <span id="auth-status" class="auth-status" aria-live="polite"></span>
+            </div>
+            <div class="header-right">
+                <button class="nav-button" data-screen="home">ראשי</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Home Screen -->
+        <section id="screen-home" class="screen active">
+            <div class="home-stage">
+                <div class="home-actions">
+                    <button id="home-start" class="cta-button">התחל משחק</button>
+                    <div class="secondary-row">
+                        <button id="home-register" class="action-button action-primary">פתיחת חשבון</button>
+                        <button id="home-login" class="action-button action-secondary">כבר יש לי חשבון</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Auth Screen -->
+        <section id="screen-auth" class="screen">
+            <div class="section-header">
+                <button id="back-from-auth" class="btn btn-secondary" type="button">חזור</button>
+            </div>
+            <div class="auth-container">
+                <div class="auth-card">
+                    <h2 id="auth-title">התחברות</h2>
+                    <p id="auth-description">הזן את מספר החשבון שלך</p>
+                    <p id="register-account-switch" class="register-account-switch hidden">יש לי חשבון <button id="register-account-login" type="button">כנס</button></p>
+                    <p id="login-account-switch" class="register-account-switch hidden">אין לי חשבון <button id="login-account-register" type="button">הירשם</button></p>
+                    <form id="auth-form" class="auth-form">
+                        <p id="privacy-notice" class="privacy-notice hidden">הפרטים לא יוצגו באתר, רק ישמרו במערכת לצורך רישום</p>
+                        <div id="registration-fields" class="registration-fields hidden">
+                            <div class="form-grid">
+                                <div class="form-stack">
+                                    <label for="first-name">שם פרטי</label>
+                                    <input id="first-name" name="firstName" type="text" autocomplete="given-name" required>
+                                </div>
+                                <div class="form-stack">
+                                    <label for="last-name">שם משפחה</label>
+                                    <input id="last-name" name="lastName" type="text" autocomplete="family-name" required>
+                                </div>
+                                <div class="form-stack">
+                                    <label for="id-number">מספר זהות (ת״ז)</label>
+                                    <input id="id-number" name="idNumber" type="text" inputmode="numeric" minlength="9" maxlength="9" pattern="[0-9]{9}" required>
+                                </div>
+                                <div class="form-stack">
+                                    <label for="date-of-birth">תאריך לידה</label>
+                                    <input id="date-of-birth" name="dateOfBirth" type="date" required>
+                                </div>
+                                <div class="form-stack">
+                                    <label for="city">עיר מגורים</label>
+                                    <input id="city" name="city" type="text" autocomplete="address-level2" required>
+                                </div>
+                                <div class="form-stack">
+                                    <label for="phone">טלפון</label>
+                                    <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" pattern="05[0-9]{8}" required>
+                                </div>
+                                <div class="form-stack full-width">
+                                    <label for="email">מייל</label>
+                                    <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="login-fields" class="form-stack">
+                            <label for="account-number">שם משתמש (6 ספרות)</label>
+                            <input id="account-number" name="accountNumber" type="text" inputmode="numeric" maxlength="6" placeholder="לדוגמה: 123456" autocomplete="username">
+                        </div>
+
+                        <div id="password-field" class="form-stack">
+                            <label for="password">סיסמה</label>
+                            <input id="password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="auth-submit">התחבר</button>
+                    </form>
+                    <p id="auth-message" class="form-message"></p>
+                    <button id="auth-switch" class="auth-switch" type="button"></button>
+                </div>
+            </div>
+        </section>
+
+        <section id="screen-admin-login" class="screen">
+            <div class="section-header">
+                <button id="back-from-admin-login" class="btn btn-secondary" type="button">חזור</button>
+            </div>
+            <div class="auth-container">
+                <div class="auth-card">
+                    <h2>ניהול המערכת</h2>
+                    <p>כניסה למנהלים בלבד</p>
+                    <form id="admin-login-form" class="auth-form">
+                        <div class="form-stack"><label for="admin-username">שם משתמש</label><input id="admin-username" type="text" autocomplete="username" required></div>
+                        <div class="form-stack"><label for="admin-password">סיסמה</label><input id="admin-password" type="password" autocomplete="current-password" required></div>
+                        <button class="btn btn-primary" type="submit">כניסה לניהול</button>
+                    </form>
+                    <p id="admin-login-message" class="form-message"></p>
+                </div>
+            </div>
+        </section>
+
+        <section id="screen-admin" class="screen">
+            <div class="section-header">
+                <button id="back-from-admin" class="btn btn-secondary" type="button">חזור</button>
+            </div>
+            <div class="admin-layout">
+                <aside class="admin-sidebar">
+                    <div class="admin-brand">
+                        <div class="admin-brand-copy"><h2>ניהול</h2></div>
+                    <div class="admin-profile-cluster">
+                        <button id="admin-profile-open" class="admin-profile-button" type="button" aria-label="פרופיל מנהל"><span id="admin-initials">CM</span></button>
+                        <small id="admin-profile-name">chess_manager</small>
+                    </div>
+                    </div>
+                    <button class="admin-tab active" data-admin-tab="analytics" type="button">אנליטיקס</button>
+                    <button class="admin-tab" data-admin-tab="users" type="button">משתמשים</button>
+                </aside>
+                <div class="admin-content">
+                    <section id="admin-analytics-panel" class="admin-panel">
+                        <div class="section-header"><h2>אנליטיקס</h2><select id="analytics-range" aria-label="טווח אנליטיקס"><option value="7">7 ימים</option><option value="30" selected>30 ימים</option><option value="90">90 ימים</option><option value="365">12 חודשים</option></select></div>
+                        <div id="analytics-summary" class="analytics-grid"></div>
+                        <div class="analytics-columns"><div class="panel"><h3>דפים נצפים</h3><div id="analytics-pages"></div></div><div class="panel"><h3>מכשירים</h3><div id="analytics-devices"></div></div><div class="panel"><h3>מיקומים</h3><div id="analytics-countries"></div></div></div>
+                        <div class="panel"><h3>פעילות לפי תאריך</h3><div id="analytics-timeline"></div></div>
+                    </section>
+                    <section id="admin-users-panel" class="admin-panel hidden">
+                        <div class="section-header"><h2>משתמשים</h2><button id="refresh-admin-users" class="btn btn-secondary" type="button">רענון</button></div>
+                        <div class="admin-users-table-wrap"><table class="ranking-table admin-users-table"><thead><tr><th>מספר שחקן</th><th>שם</th><th>מייל</th><th>עיר</th><th>אימות</th><th>נרשם</th><th>ניקוד</th></tr></thead><tbody id="admin-users-body"></tbody></table></div>
+                    </section>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Screen -->
+        <section id="screen-dashboard" class="screen">
+            <div class="section-header">
+                <button id="back-from-dashboard" class="btn btn-secondary" type="button">חזור</button>
+            </div>
+            <div class="dashboard-header">
+                <div>
+                    <h2>לוח בקרה</h2>
+                    <p>חשבון מספר: <strong id="dashboard-account">---</strong></p>
+                </div>
+                <div class="rating-summary">
+                    <div class="rating-box">
+                        <span class="rating-label">מדד</span>
+                        <span id="dashboard-rating" class="rating-value">1200</span>
+                    </div>
+                    <div class="stats-box">
+                        <span>משחקים: <strong id="dashboard-games">0</strong></span>
+                        <span>ניצחונות: <strong id="dashboard-wins">0</strong></span>
+                        <span>הפסדים: <strong id="dashboard-losses">0</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="panel">
+                    <h3>פתיחת משחק חדש</h3>
+                    <form id="new-game-form" class="form-stack">
+                        <label for="player1-id">שחקן 1 (מזוהה אוטומטית)</label>
+                        <input id="player1-id" type="text" readonly>
+                        <label for="player2-id">שחקן 2 (מספר חשבון)</label>
+                        <input id="player2-id" type="text" inputmode="numeric" maxlength="6" placeholder="מספר חשבון של יריב">
+                        <button type="submit" class="btn btn-primary">פתיחת משחק</button>
+                    </form>
+                    <p id="game-message" class="form-message"></p>
+                </div>
+
+                <div class="panel">
+                    <h3>מדדך האישי</h3>
+                    <div class="rating-card">
+                        <div class="rating-circle">
+                            <span id="profile-rating">1200</span>
+                            <small>מדד</small>
+                        </div>
+                        <div class="rating-details">
+                            <p><strong>משחקים:</strong> <span id="profile-games">0</span></p>
+                            <p><strong>ניצחונות:</strong> <span id="profile-wins">0</span></p>
+                            <p><strong>הפסדים:</strong> <span id="profile-losses">0</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>המשחקים שלי</h3>
+                <div id="my-games-list" class="games-list"></div>
+            </div>
+        </section>
+
+        <!-- Games Screen -->
+        <section id="screen-games" class="screen">
+            <div class="matchmaking-header">
+                <div>
+                    <h2>שחקנים</h2>
+                </div>
+            </div>
+            <div class="matchmaking-toolbar player-search-toolbar">
+                <div class="players-top-right">
+                    <button id="back-from-players" class="btn btn-secondary" type="button">חזור</button>
+                    <button id="refresh-players" class="btn btn-secondary" type="button">רענן</button>
+                </div>
+                <div class="matchmaking-controls players-top-left">
+                    <span class="control-item player-search">
+                        <input id="player-search" type="search" placeholder="חיפוש לפי מספר שחקן..." aria-label="חיפוש שחקן">
+                    </span>
+                    <label class="preferred-color-control control-item" for="preferred-color">
+                        <span>צבע מועדף</span>
+                        <select id="preferred-color">
+                            <option value="random">אקראי</option>
+                            <option value="white">לבן</option>
+                            <option value="black">שחור</option>
+                        </select>
+                    </label>
+                    <span class="control-item availability-item">
+                        <label class="availability-control" aria-label="זמינות">
+                            <input id="availability-toggle" type="checkbox">
+                            <span class="availability-switch" aria-hidden="true"><span></span></span>
+                        </label>
+                        <span class="availability-label" id="availability-label">לא זמין</span>
+                    </span>
+                </div>
+            </div>
+            <div id="available-players-list" class="players-grid"></div>
+            <div class="invitations-section">
+                <div id="incoming-invitations" class="invitations-list"></div>
+            </div>
+        </section>
+
+        <!-- Game Screen -->
+        <section id="screen-game" class="screen">
+            <div class="section-header">
+                <button id="back-from-game" class="btn btn-secondary" type="button">חזור</button>
+            </div>
+            <div class="game-layout">
+                <div class="game-main">
+                    <h2 id="game-title">משחק</h2>
+                    <div id="game-board" class="chess-board"></div>
+                    <div class="game-controls">
+                        <button id="game-prev" class="btn btn-secondary">קודם</button>
+                        <span id="game-move-number" class="move-number">מהלך 0</span>
+                        <button id="game-next" class="btn btn-secondary">הבא</button>
+                    </div>
+                    <div id="game-status" class="game-status"></div>
+                    <div id="game-move-input" class="move-input-area">
+                        <input id="move-from" type="text" maxlength="2" placeholder="מא" required>
+                        <input id="move-to" type="text" maxlength="2" placeholder="אל" required>
+                        <button id="submit-move" class="btn btn-primary">העברת מהלך</button>
+                    </div>
+                    <p id="game-message" class="form-message"></p>
+                </div>
+                <div class="game-side">
+                    <div class="panel">
+                        <h3>התוצאה</h3>
+                        <div id="game-players" class="players-card"></div>
+                    </div>
+                    <div class="panel">
+                        <h3>שימור המהלכים</h3>
+                        <div id="move-history" class="move-history"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="screen-player-history" class="screen">
+            <div class="section-header">
+                <button id="back-to-ranking" class="btn btn-secondary" type="button">חזור</button>
+                <h2 id="player-history-title">היסטוריית משחקים</h2>
+            </div>
+            <div id="player-history-list" class="history-list"></div>
+        </section>
+    </main>
+
+    <div id="admin-profile-dialog" class="admin-profile-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="admin-profile-title">
+        <div class="admin-profile-card">
+            <div class="admin-profile-card-header"><button id="admin-profile-close" type="button">סגור</button></div>
+            <div class="admin-profile-avatar large"><span id="admin-dialog-initials">CM</span></div>
+            <h2 id="admin-profile-title" class="admin-profile-heading">פרופיל מנהל</h2>
+
+            <!-- מצב תצוגה: שורות קריאה בלבד, ללא תיבות פתוחות -->
+            <div id="profile-display" class="profile-display">
+                <div class="profile-display-row">
+                    <div class="profile-display-field">
+                        <small>שם המנהל</small>
+                        <strong id="profile-display-name">—</strong>
+                    </div>
+                </div>
+                <div class="profile-display-row">
+                    <div class="profile-display-field">
+                        <small>סיסמה</small>
+                        <strong id="profile-display-password">••••••••</strong>
+                    </div>
+                    <button id="profile-edit-toggle" class="btn btn-secondary" type="button">שינוי</button>
+                </div>
+                <button id="open-managers-btn" class="btn btn-secondary profile-managers-open" type="button">נהל חשבונות אחרים</button>
+            </div>
+
+            <!-- מצב עריכה: נפתח רק בלחיצת "שינוי" -->
+            <form id="admin-profile-form" class="form-stack hidden">
+                <label for="profile-name-input">שם מנהל</label><input id="profile-name-input" type="text" required>
+                <label for="profile-password-input">סיסמה חדשה</label><input id="profile-password-input" type="password" minlength="8" placeholder="השאר ריק כדי לא לשנות">
+                <button class="btn btn-primary" type="submit">שמירה</button>
+                <button id="profile-edit-cancel" class="btn btn-secondary" type="button">ביטול</button>
+            </form>
+
+            <button id="admin-logout" class="btn btn-danger profile-logout" type="button">יציאה</button>
+            <p id="admin-profile-message" class="form-message"></p>
+        </div>
+    </div>
+
+    <!-- חלון ניהול חשבונות מנהלים אחרים -->
+    <div id="managers-dialog" class="admin-profile-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="managers-title">
+        <div class="admin-profile-card">
+            <div class="admin-profile-card-header managers-header">
+                <button id="managers-back" class="managers-back" type="button" aria-label="חזרה לפרופיל">↑ חזרה</button>
+                <h2 id="managers-title">ניהול חשבונות</h2>
+            </div>
+            <button id="manager-add-open" class="btn btn-primary managers-add-open" type="button">הוספת מנהל חדש</button>
+            <form id="manager-add-form" class="form-stack hidden">
+                <label for="manager-add-username">שם המנהל</label><input id="manager-add-username" type="text" required>
+                <label for="manager-add-password">סיסמה</label><input id="manager-add-password" type="password" minlength="8" required>
+                <button class="btn btn-primary" type="submit">שמירה</button>
+                <button id="manager-add-cancel" class="btn btn-secondary" type="button">ביטול</button>
+            </form>
+            <div id="managers-list" class="managers-list"></div>
+            <p id="managers-message" class="form-message"></p>
+        </div>
+    </div>
+
+    <!-- חלון אישור מחיקת מנהל -->
+    <div id="delete-confirm-dialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+        <div class="invitation-dialog panel">
+            <h2 id="delete-confirm-title">מחיקת מנהל</h2>
+            <p id="delete-confirm-text"></p>
+            <div class="dialog-actions">
+                <button id="delete-confirm-yes" class="btn btn-danger" type="button">אישור</button>
+                <button id="delete-confirm-no" class="btn btn-secondary" type="button">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- אזהרת יציאה באמצע משחק (כניעה) -->
+    <div id="leave-game-dialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="leave-game-title">
+        <div class="invitation-dialog panel">
+            <h2 id="leave-game-title">אתה באמצע משחק!</h2>
+            <p>יציאה במהלך משחק נחשבת ל<strong>כניעה (הפסד)</strong>. האם ברצונך לצאת?</p>
+            <div class="dialog-actions">
+                <button id="leave-game-yes" class="btn btn-danger" type="button">צא בכל זאת</button>
+                <button id="leave-game-no" class="btn btn-primary" type="button">חזור למשחק</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="invitation-dialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="invitation-dialog-title">
+        <div class="invitation-dialog panel">
+            <h2 id="invitation-dialog-title">הזמנה למשחק</h2>
+            <p id="invitation-dialog-message"></p>
+            <div class="dialog-actions">
+                <button id="accept-invitation" class="btn btn-primary" type="button">אשר ושחק</button>
+                <button id="decline-invitation" class="btn btn-secondary" type="button">דחה</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-loading" class="game-loading hidden" role="status" aria-live="polite">
+        <div class="game-loading-bar"><span></span></div>
+        <strong>טוען...</strong>
+    </div>
+
+    <div id="player-preview" class="player-preview hidden" role="button" tabindex="0" aria-label="פתיחת היסטוריית שחקן" onmouseenter="cancelPlayerPreviewClose()" onmouseleave="schedulePlayerPreviewClose()" onclick="openPreviewHistory()" onkeydown="if (event.key === 'Enter' || event.key === ' ') openPreviewHistory()">
+        <div class="player-preview-header">
+            <strong id="player-preview-title"></strong>
+        </div>
+        <div id="player-preview-content"></div>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/game.js"></script>
+    <script src="/js/rating.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

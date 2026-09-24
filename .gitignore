@@ -1,0 +1,20 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.admin_sessions.json
+*.db
+*.log
+npm-debug.log*
+.vscode/
+.DS_Store
+
+.aider*
+*.tmp
+
+# Local recovery folders are not part of the active source snapshot
+before_*/
+restore-*/
+feature-*-backup-*/
+pre_*/
+_feature_*/
