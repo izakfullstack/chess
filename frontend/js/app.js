@@ -47,7 +47,7 @@ let accountSettingsDirty = false;
 const BOARD_DEFAULT_PAN_Y = '-3rem';
 const BOARD_DEFAULT_TILT = '30deg';
 const BOARD_DEFAULT_TOP_OFFSET = '-4rem';
-const BOARD_MAX_TILT = 88;
+const BOARD_MAX_TILT = 45;
 
 function getUserStateKey(name) {
     return auth.currentUser ? `chess_${auth.currentUser.accountNumber}_${name}` : null;
@@ -420,22 +420,21 @@ function confirmLeaveGame() {
         if (target) applyScreen(target);
     };
 
+    if (currentGame && String(currentGame.id) === String(gameId)) {
+        currentGame.status = 'completed';
+        currentGame.winnerId = winnerId;
+    }
+    leaveConfirmationInProgress = false;
+
     if (gameId && winnerId !== undefined && winnerId !== null && auth.currentUser) {
-        // יציאה במהלך משחק = כניעה: היריב מנצח
+        // הניווט מתבצע מיד; הכניעה נשלחת ברקע גם אם הדפדפן נסגר מיד אחר כך.
+        finish();
         fetch(`/api/games/${gameId}/complete`, {
             method: 'POST',
+            keepalive: true,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ winnerId })
-        })
-            .then(response => response.json())
-            .then(() => {
-                if (currentGame && String(currentGame.id) === String(gameId)) {
-                    currentGame.status = 'completed';
-                    currentGame.winnerId = winnerId;
-                }
-            })
-            .catch(error => console.error('הכניעה לא נשמרה בשרת:', error))
-            .finally(finish);
+        }).catch(error => console.error('הכניעה לא נשמרה בשרת:', error));
     } else {
         finish();
     }
@@ -1507,21 +1506,24 @@ function renderChessBoard(fen, currentTurn) {
             const row = flipped ? 7 - displayRow : displayRow;
             const col = flipped ? 7 - displayCol : displayCol;
             const square = document.createElement('div');
+            const piece = board[row][col];
             const legalMoves = currentGame?.legalMoves || [];
-            const selectedPiece = selectedSquare && legalMoves.some(move =>
-                move.from.row === selectedSquare.row && move.from.col === selectedSquare.col) ? selectedSquare : null;
+            const selectedPiece = selectedSquare && (
+                legalMoves.some(move => move.from.row === selectedSquare.row && move.from.col === selectedSquare.col)
+                || piece?.color === currentGame.currentTurn
+            ) ? selectedSquare : null;
             const isSelectedSquare = selectedPiece && selectedPiece.row === row && selectedPiece.col === col;
             const canMoveTo = selectedPiece && legalMoves.some(move =>
                 move.from.row === selectedPiece.row && move.from.col === selectedPiece.col &&
                 move.to.row === row && move.to.col === col);
             const squareClasses = [`square`, (row + col) % 2 === 0 ? 'light' : 'dark'];
+            const isCaptureTarget = Boolean(canMoveTo && piece && piece.color !== currentGame.currentTurn);
             if (isSelectedSquare) squareClasses.push('selected-square');
             if (canMoveTo) squareClasses.push('validmove');
+            if (isCaptureTarget) squareClasses.push('capture-target');
             square.className = squareClasses.join(' ');
             square.dataset.row = row;
             square.dataset.col = col;
-
-            const piece = board[row][col];
             if (piece) {
                 const pieceElement = document.createElement('div');
                 pieceElement.className = `piece ${piece.color}${isSelectedSquare ? ' selected-piece' : ''}`;
@@ -1621,6 +1623,8 @@ function handleSquareClick(row, col) {
     if (!currentGame || currentGame.status !== 'active' || historicalGameView || !isCurrentPlayerTurn()) return;
     const legalMoves = currentGame.legalMoves || [];
     const notation = game.squareToNotation(row, col);
+    const board = game.fenToBoard(currentGame.board);
+    const pieceOnSquare = board[row]?.[col] || null;
 
     if (selectedSquare) {
         const move = legalMoves.find(item =>
@@ -1630,9 +1634,20 @@ function handleSquareClick(row, col) {
             submitMoveToServer(notationFromSquare(move.from), notationFromSquare(move.to), move.promotion);
             return;
         }
+
+        // גיבוי למצב שבו רשימת המהלכים עוד לא הסתיימה להיטען: אכילה ישירה
+        // עדיין נבדקת במלואה בשרת לפני שמירתה.
+        const fromSquare = notationFromSquare(selectedSquare);
+        const fromPiece = board[selectedSquare.row]?.[selectedSquare.col];
+        if (fromPiece && pieceOnSquare && pieceOnSquare.color !== fromPiece.color) {
+            selectedSquare = null;
+            submitMoveToServer(fromSquare, notation);
+            return;
+        }
     }
 
-    const canSelect = legalMoves.some(move => move.from.row === row && move.from.col === col);
+    const canSelect = legalMoves.some(move => move.from.row === row && move.from.col === col)
+        || (pieceOnSquare && pieceOnSquare.color === currentGame.currentTurn);
     selectedSquare = canSelect ? { row, col } : null;
     renderChessBoard(currentGame.board, currentGame.currentTurn);
 }

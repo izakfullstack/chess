@@ -801,11 +801,9 @@ input[readonly] {
 .chess-board-stage {
     position: relative;
     top: -5rem !important;
-    width: min(100%, 42rem, calc(100vh - 12rem));
-    width: min(100%, 42rem, calc(100dvh - 12rem));
+    width: min(100%, 42rem);
     aspect-ratio: 1;
-    max-width: 100%;
-    margin: 0 auto;
+    margin: var(--spacing-md) auto;
     transform: translate3d(var(--board-pan-x, 0), var(--board-pan-y, 0px), 0);
     transform-origin: 50% 50%;
     transform-style: preserve-3d;
@@ -820,7 +818,7 @@ input[readonly] {
     aspect-ratio: 1;
     border: 12px solid #3d2b1f;
     border-radius: var(--radius-sm);
-    margin: 0 auto;
+    margin: var(--spacing-md) auto;
     box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 0 2px rgba(255,255,255,0.08);
     transform: perspective(1000px) rotateX(var(--board-tilt-x, 12deg)) rotateZ(var(--board-rotate, 0deg));
     transform-origin: 50% 50%;
@@ -875,6 +873,19 @@ input[readonly] {
     border-radius: 50%;
     background-color: rgba(219, 234, 254, 0.9);
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.38);
+}
+
+.square.validmove.capture-target {
+    background-color: rgba(239, 68, 68, 0.72) !important;
+    box-shadow: inset 0 0 0 3px rgba(254, 226, 226, 0.95);
+}
+
+.square.validmove.capture-target::after {
+    width: 34%;
+    height: 34%;
+    border: 3px solid rgba(255, 255, 255, 0.95);
+    background-color: rgba(127, 29, 29, 0.72);
+    box-shadow: 0 0 0 3px rgba(127, 29, 29, 0.38);
 }
 
 .piece {
@@ -984,7 +995,7 @@ input[readonly] {
 body.game-screen-active #center-board-global {
     position: fixed;
     right: 1rem;
-    bottom: 2.5rem;
+    bottom: 4.75rem;
     z-index: 2147483000;
     display: inline-flex !important;
     visibility: visible !important;
@@ -3049,18 +3060,9 @@ body:has(.account-settings-screen.active) .site-footer {
 }
 
 
-/* משחק ללא גלילת עמוד וללא התרחבות אופקית */
+/* משחק ללא גלילת עמוד */
 html:has(#screen-game.active),
 body:has(#screen-game.active) {
-    overflow: hidden;
-}
-
-#screen-game.active,
-#screen-game.active .game-layout,
-#screen-game.active .game-main {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
     overflow: hidden;
 }
 
@@ -3072,8 +3074,7 @@ body:has(#screen-game.active) {
     }
 
     .chess-board-stage {
-        width: min(100%, 32rem, calc(100vh - 12rem));
-        width: min(100%, 32rem, calc(100dvh - 12rem));
+        width: min(100%, 32rem);
     }
 
     #game-title {
