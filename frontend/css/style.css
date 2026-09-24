@@ -1210,6 +1210,7 @@ body.game-screen-active #center-board-global {
     color: #6b4f3a;
     font-size: 0.78rem;
     font-weight: 600;
+    text-align: center;
 }
 
 .player-preview-full-history-hint {
@@ -1228,6 +1229,7 @@ body.game-screen-active #center-board-global {
     font-size: 0.88rem;
     font-weight: 300;
     letter-spacing: 0.015em;
+    text-align: center;
 }
 
 .preview-game,
