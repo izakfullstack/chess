@@ -46,6 +46,51 @@ const BOARD_DEFAULT_PAN_Y = '-3rem';
 const BOARD_DEFAULT_TILT = '30deg';
 const BOARD_DEFAULT_TOP_OFFSET = '-4rem';
 
+function getUserStateKey(name) {
+    return auth.currentUser ? `chess_${auth.currentUser.accountNumber}_${name}` : null;
+}
+
+function setUserState(name, value) {
+    const key = getUserStateKey(name);
+    if (key) localStorage.setItem(key, String(value));
+}
+
+function removeUserState(name) {
+    const key = getUserStateKey(name);
+    if (key) localStorage.removeItem(key);
+}
+
+function clearPersistedGameState() {
+    removeUserState('last_game_id');
+    removeUserState('last_game_historical');
+}
+
+function restoreLastScreen() {
+    if (!auth.currentUser) return;
+
+    const lastGameId = localStorage.getItem(getUserStateKey('last_game_id'));
+    if (lastGameId) {
+        const historical = localStorage.getItem(getUserStateKey('last_game_historical')) === '1';
+        applyScreen('game');
+        loadGame(lastGameId, historical);
+        return;
+    }
+
+    const lastScreen = localStorage.getItem(getUserStateKey('last_screen'));
+    if (lastScreen === 'player-history') {
+        const account = localStorage.getItem(getUserStateKey('history_account'));
+        if (account) {
+            activeHistoryAccount = account;
+            applyScreen('player-history');
+            loadPlayerHistoryPage(account, false);
+            return;
+        }
+    }
+
+    const allowedScreens = ['home', 'games', 'dashboard', 'account-settings'];
+    applyScreen(allowedScreens.includes(lastScreen) ? lastScreen : 'home');
+}
+
 /**
  * אתחול היישום
  */
@@ -65,6 +110,8 @@ function initApp() {
 
     if (window.location.pathname === '/admin') {
         showScreen('admin-login');
+    } else {
+        restoreLastScreen();
     }
 
     const verificationStatus = new URLSearchParams(window.location.search).get('verified');
@@ -267,6 +314,7 @@ function applyScreen(screenName) {
     // עצירת רענון המשחק כשעוזבים את מסך המשחק
     if (screenName !== 'game') {
         stopGamePolling();
+        if (currentGame) clearPersistedGameState();
         document.getElementById('game-loading')?.classList.add('hidden');
     }
 
@@ -285,6 +333,7 @@ function applyScreen(screenName) {
     currentScreen = screenName;
     document.body.classList.toggle('admin-mode', screenName === 'admin' || screenName === 'admin-login');
     document.body.classList.toggle('game-screen-active', screenName === 'game');
+    if (auth.currentUser && screenName !== 'auth') setUserState('last_screen', screenName);
 
     // טיפול בלוגיקה ספציפית למסך
     switch (screenName) {
@@ -351,6 +400,7 @@ function confirmLeaveGame() {
     stopGamePolling();
 
     const finish = () => {
+        clearPersistedGameState();
         if (target === '__logout__') {
             auth.currentUser = null;
             localStorage.removeItem('chess_user');
@@ -1267,6 +1317,8 @@ function loadGame(gameId, historical = false, silent = false) {
             if (!game) throw new Error('תשובת משחק ריקה');
 
             currentGame = game;
+            setUserState('last_game_id', game.id);
+            setUserState('last_game_historical', historical ? '1' : '0');
             if (!silent) {
                 setLoadingProgress(100);
                 clearTimeout(loadingHideTimer);
@@ -1910,6 +1962,7 @@ window.openPreviewHistory = function() {
 
 window.openPlayerHistory = function(accountNumber) {
     previousScreenBeforeHistory = currentScreen;
+    setUserState('history_account', accountNumber);
     showScreen('player-history');
     playerHistoryOffset = 0;
     activeHistoryAccount = accountNumber;

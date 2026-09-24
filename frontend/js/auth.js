@@ -337,6 +337,7 @@ function handleLogout() {
         document.getElementById('leave-game-dialog').classList.remove('hidden');
         return;
     }
+    if (typeof clearPersistedGameState === 'function') clearPersistedGameState();
     currentUser = null;
     localStorage.removeItem('chess_user');
     updateUIForUser();
