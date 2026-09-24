@@ -1220,6 +1220,7 @@ body.game-screen-active #center-board-global {
     color: #6b4f3a;
     font-size: 0.68rem;
     line-height: 1.3;
+    text-align: center;
 }
 
 .player-preview-header {

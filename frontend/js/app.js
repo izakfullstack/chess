@@ -1845,6 +1845,7 @@ window.openPlayerPreview = function(accountNumber, rowElement, pointerEvent) {
     }
 
     if (playerPreviewOpenTimer) clearTimeout(playerPreviewOpenTimer);
+    document.getElementById('player-preview')?.classList.add('hidden');
     previewAccountNumber = accountNumber;
     playerPreviewOpenTimer = setTimeout(() => {
         playerPreviewOpenTimer = null;
