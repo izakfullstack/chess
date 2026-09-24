@@ -35,7 +35,7 @@ let activeHistoryAccount = null;
 let historyLoading = false;
 let historyFinished = false;
 let previousScreenBeforeHistory = 'games';
-let previousScreenBeforeSettings = 'home';
+const screenHistory = [];
 let pendingLeaveScreen = null;
 let gamePollTimer = null;
 let sentInvitePollTimer = null;
@@ -205,23 +205,22 @@ function setupGlobalEvents() {
         });
     }
 
-    document.getElementById('back-to-ranking')?.addEventListener('click', () => showScreen(previousScreenBeforeHistory));
+    document.getElementById('back-to-ranking')?.addEventListener('click', goBack);
 
-    document.getElementById('back-from-players')?.addEventListener('click', () => showScreen('home'));
-    document.getElementById('back-from-auth')?.addEventListener('click', () => showScreen('home'));
-    document.getElementById('back-from-dashboard')?.addEventListener('click', () => showScreen('home'));
-    document.getElementById('back-from-game')?.addEventListener('click', () => showScreen('games'));
+    document.getElementById('back-from-players')?.addEventListener('click', goBack);
+    document.getElementById('back-from-auth')?.addEventListener('click', goBack);
+    document.getElementById('back-from-dashboard')?.addEventListener('click', goBack);
+    document.getElementById('back-from-game')?.addEventListener('click', goBack);
     document.getElementById('center-board-global')?.addEventListener('click', resetBoardView);
-    document.getElementById('back-from-admin-login')?.addEventListener('click', () => showScreen('home'));
-    document.getElementById('back-from-admin')?.addEventListener('click', () => showScreen('home'));
+    document.getElementById('back-from-admin-login')?.addEventListener('click', goBack);
+    document.getElementById('back-from-admin')?.addEventListener('click', goBack);
     document.getElementById('profile-settings')?.addEventListener('click', () => {
         document.getElementById('profile-menu')?.classList.add('hidden');
         if (auth.requireAuth('יש להתחבר כדי לפתוח הגדרות חשבון')) {
-            previousScreenBeforeSettings = currentScreen;
             showScreen('account-settings');
         }
     });
-    document.getElementById('back-from-account-settings')?.addEventListener('click', () => showScreen(previousScreenBeforeSettings || 'home'));
+    document.getElementById('back-from-account-settings')?.addEventListener('click', goBack);
     const showFullNameToggle = document.getElementById('show-full-name');
     if (showFullNameToggle) showFullNameToggle.addEventListener('change', markAccountSettingsDirty);
     document.getElementById('save-account-settings')?.addEventListener('click', saveAccountSettings);
@@ -301,6 +300,7 @@ function setupGlobalEvents() {
 function showScreen(screenName) {
     // דף הדירוג מוזג לתוך דף "שחקנים"
     if (screenName === 'ranking') screenName = 'games';
+    if (screenName === currentScreen) return;
 
     if (shouldWarnBeforeLeavingGame(screenName)) {
         pendingLeaveScreen = screenName;
@@ -308,7 +308,19 @@ function showScreen(screenName) {
         return;
     }
 
+    if (currentScreen) screenHistory.push(currentScreen);
     applyScreen(screenName);
+}
+
+function goBack(fallback = 'home') {
+    const previousScreen = screenHistory[screenHistory.length - 1] || fallback;
+    if (shouldWarnBeforeLeavingGame(previousScreen)) {
+        pendingLeaveScreen = previousScreen;
+        document.getElementById('leave-game-dialog').classList.remove('hidden');
+        return;
+    }
+    screenHistory.pop();
+    applyScreen(previousScreen);
 }
 
 /**
@@ -405,6 +417,7 @@ function confirmLeaveGame() {
 
     const finish = () => {
         clearPersistedGameState();
+        if (screenHistory[screenHistory.length - 1] === target) screenHistory.pop();
         if (target === '__logout__') {
             auth.currentUser = null;
             localStorage.removeItem('chess_user');
@@ -1965,7 +1978,6 @@ window.openPreviewHistory = function() {
 };
 
 window.openPlayerHistory = function(accountNumber) {
-    previousScreenBeforeHistory = currentScreen;
     setUserState('history_account', accountNumber);
     showScreen('player-history');
     playerHistoryOffset = 0;
