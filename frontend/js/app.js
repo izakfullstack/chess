@@ -42,12 +42,13 @@ let gamePollTimer = null;
 let sentInvitePollTimer = null;
 let sentInvitePollInitialized = false;
 let handledAcceptedInvites = new Set();
+let opponentResignationNoticeShown = false;
 let accountSettingsMessageTimer = null;
 let accountSettingsDirty = false;
 const BOARD_DEFAULT_PAN_Y = '-3rem';
 const BOARD_DEFAULT_TILT = '30deg';
 const BOARD_DEFAULT_TOP_OFFSET = '-4rem';
-const BOARD_MAX_TILT = 45;
+const BOARD_MAX_TILT = 38;
 
 function getUserStateKey(name) {
     return auth.currentUser ? `chess_${auth.currentUser.accountNumber}_${name}` : null;
@@ -249,6 +250,10 @@ function setupGlobalEvents() {
     document.getElementById('decline-invitation')?.addEventListener('click', () => respondToInvitation(false));
     document.getElementById('close-sent-invitation')?.addEventListener('click', () => {
         document.getElementById('sent-invitation-dialog')?.classList.add('hidden');
+    });
+    document.getElementById('opponent-resignation-leave')?.addEventListener('click', () => {
+        document.getElementById('opponent-resignation-dialog')?.classList.add('hidden');
+        goBack();
     });
 
     // אזהרת יציאה באמצע משחק (כניעה)
@@ -470,7 +475,7 @@ function startGamePolling(gameId) {
             stopGamePolling();
             return;
         }
-        fetch(`/api/games/${gameId}`)
+        fetch(`/api/games/${gameId}?accountNumber=${encodeURIComponent(auth.currentUser?.accountNumber || '')}`)
             .then(response => response.json())
             .then(latest => {
                 if (currentScreen !== 'game') return;
@@ -482,9 +487,21 @@ function startGamePolling(gameId) {
                 if (changed) {
                     loadGame(latest.id, historicalGameView, true);
                 }
+                if (previous?.status === 'active' && latest.status === 'completed'
+                    && latest.winnerId != null && String(latest.winnerId) === String(auth.currentUser?.id)
+                    && !opponentResignationNoticeShown) {
+                    opponentResignationNoticeShown = true;
+                    showOpponentResignationNotice();
+                }
             })
             .catch(() => { /* רענון שקט */ });
     }, 2500);
+}
+
+function showOpponentResignationNotice() {
+    const dialog = document.getElementById('opponent-resignation-dialog');
+    if (!dialog) return;
+    dialog.classList.remove('hidden');
 }
 
 function stopGamePolling() {
