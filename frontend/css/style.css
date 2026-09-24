@@ -2561,10 +2561,10 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
 }
 
 .player-match-card > .player-card-head {
-    display: flex;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
     gap: 0.6rem;
-    justify-content: space-between;
     direction: rtl;
 }
 
@@ -2578,16 +2578,18 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
 }
 
 .player-match-card > .player-card-head .availability-status {
-    flex: 0 0 auto;
-    align-self: flex-start;
-    margin-left: auto;
+    grid-column: 2;
+    align-self: start;
+    margin-left: 0;
+    direction: ltr;
+    text-align: left;
     white-space: nowrap;
 }
 
 .player-card-meta-line {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: center;
-    justify-content: space-between;
     gap: 1rem;
     direction: ltr;
     padding-top: 0.35rem;
@@ -2596,7 +2598,7 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
 }
 
 .player-card-account {
-    flex: 1;
+    grid-column: 1;
     min-width: 0;
     color: var(--text-muted);
     font-size: 0.78rem;
@@ -2605,7 +2607,7 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
 }
 
 .player-card-rank {
-    flex: 0 0 auto;
+    grid-column: 2;
     color: var(--text-secondary);
     font-size: 0.78rem;
     font-weight: 700;
