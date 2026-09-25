@@ -35,6 +35,7 @@ let activeHistoryAccount = null;
 let historyLoading = false;
 let historyFinished = false;
 let previousScreenBeforeHistory = 'games';
+let lastNonGameScreen = 'home';
 const screenHistory = [];
 let pendingLeaveScreen = null;
 let leaveConfirmationInProgress = false;
@@ -95,6 +96,9 @@ function restoreLastScreen() {
     }
 
     const lastScreen = localStorage.getItem(getUserStateKey('last_screen'));
+    if (['home', 'games', 'dashboard', 'account-settings'].includes(lastScreen)) {
+        lastNonGameScreen = lastScreen;
+    }
     if (lastScreen === 'player-history') {
         const account = localStorage.getItem(getUserStateKey('history_account'));
         if (account) {
@@ -311,10 +315,11 @@ function showScreen(screenName) {
     }
 
     if (currentScreen) screenHistory.push(currentScreen);
+    if (screenName !== 'game' && currentScreen !== 'game') lastNonGameScreen = screenName;
     applyScreen(screenName);
 }
 
-function goBack(fallback = 'home') {
+function goBack(fallback = lastNonGameScreen || 'home') {
     const previousScreen = getPreviousScreen(fallback);
     if (shouldWarnBeforeLeavingGame(previousScreen)) {
         pendingLeaveScreen = previousScreen;
@@ -352,6 +357,7 @@ function applyScreen(screenName) {
 
     // עדכון מסך נוכחי
     currentScreen = screenName;
+    if (screenName !== 'game') lastNonGameScreen = screenName;
     document.body.classList.toggle('admin-mode', screenName === 'admin' || screenName === 'admin-login');
     document.body.classList.toggle('game-screen-active', screenName === 'game');
     if (auth.currentUser && screenName !== 'auth') setUserState('last_screen', screenName);
@@ -1739,39 +1745,60 @@ function isCurrentPlayerTurn() {
     return false;
 }
 
+function findLegalMove(from, to) {
+    const legalMoves = currentGame?.legalMoves || [];
+    return legalMoves.find(item =>
+        Number(item.from?.row) === Number(from.row) &&
+        Number(item.from?.col) === Number(from.col) &&
+        Number(item.to?.row) === Number(to.row) &&
+        Number(item.to?.col) === Number(to.col)
+    ) || null;
+}
+
 function handleSquareClick(row, col) {
     if (!currentGame || currentGame.status !== 'active' || historicalGameView || !isCurrentPlayerTurn()) return;
-    const legalMoves = currentGame.legalMoves || [];
-    const notation = game.squareToNotation(row, col);
+
     const board = game.fenToBoard(currentGame.board);
     const pieceOnSquare = board[row]?.[col] || null;
 
     if (selectedSquare) {
-        const move = legalMoves.find(item =>
-            item.from.row === selectedSquare.row && item.from.col === selectedSquare.col && item.to.row === row && item.to.col === col);
-        if (move) {
+        const selectedPiece = board[selectedSquare.row]?.[selectedSquare.col];
+        const legalMove = findLegalMove(selectedSquare, { row, col });
+
+        // משתמש ברשימת השרת כמקור הראשי. אם היא זמינה אך ריקה
+        // (למשל בזמן polling), בדיקת הלקוח מאפשרת לנסות את המהלך; השרת
+        // עדיין מאמת ודוחה כל מהלך לא חוקי לפני השמירה.
+        const clientMoveIsLegal = Boolean(selectedPiece && pieceOnSquare?.color !== selectedPiece.color && game.isValidMove(
+            board,
+            { row: selectedSquare.row, col: selectedSquare.col },
+            { row, col },
+            selectedPiece
+        ));
+
+        if ((legalMove || (currentGame.legalMoves?.length === 0 && clientMoveIsLegal))
+            && selectedPiece?.color === currentGame.currentTurn) {
+            const move = legalMove || {
+                from: selectedSquare,
+                to: { row, col },
+                promotion: selectedPiece.type === 'pawn' && (row === 0 || row === 7) ? 'queen' : null
+            };
             selectedSquare = null;
             submitMoveToServer(notationFromSquare(move.from), notationFromSquare(move.to), move.promotion);
             return;
         }
-
-        const fromSquare = notationFromSquare(selectedSquare);
-        const fromPiece = board[selectedSquare.row]?.[selectedSquare.col];
-        const isValidClientMove = fromPiece && game.isValidMove(
-            board,
-            { row: selectedSquare.row, col: selectedSquare.col },
-            { row, col },
-            fromPiece
-        );
-        if (isValidClientMove && (!pieceOnSquare || pieceOnSquare.color !== fromPiece.color)) {
-            selectedSquare = null;
-            submitMoveToServer(fromSquare, notation);
-            return;
-        }
     }
 
-    const canSelect = legalMoves.some(move => move.from.row === row && move.from.col === col)
-        || (pieceOnSquare && pieceOnSquare.color === currentGame.currentTurn);
+    const canSelect = Boolean(
+        pieceOnSquare &&
+        pieceOnSquare.color === currentGame.currentTurn &&
+        (
+            (currentGame.legalMoves || []).some(move =>
+                Number(move.from?.row) === row && Number(move.from?.col) === col
+            ) ||
+            currentGame.legalMoves?.length === 0
+        )
+    );
+
     selectedSquare = canSelect ? { row, col } : null;
     renderChessBoard(currentGame.board, currentGame.currentTurn);
 }
