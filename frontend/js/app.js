@@ -1310,7 +1310,11 @@ function selectGame(gameId) {
  */
 function loadGame(gameId, historical = false, silent = false) {
     historicalGameView = historical;
-    if (!silent) resetBoardView();
+    if (!silent) {
+        resetBoardView();
+        // שחזור משחק לא ישאיר את הדפדפן במיקום גלילה ישן מהמסך שממנו המשתמש יצא.
+        window.scrollTo(0, 0);
+    }
     const loading = document.getElementById('game-loading');
     const loadingBar = loading?.querySelector('.game-loading-bar span');
     const loadingText = loading?.querySelector('strong');
