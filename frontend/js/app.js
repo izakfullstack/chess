@@ -1528,6 +1528,83 @@ function shouldFlipBoard() {
     return false;
 }
 
+function getCurrentPlayerColor() {
+    if (!currentGame || !auth.currentUser) return 'white';
+    if (String(auth.currentUser.accountNumber) === String(currentGame.player1Account)) {
+        return currentGame.player1Color || 'white';
+    }
+    if (String(auth.currentUser.accountNumber) === String(currentGame.player2Account)) {
+        return currentGame.player2Color || 'black';
+    }
+    return 'white';
+}
+
+function getCapturedPiecesByPlayer() {
+    const captured = { white: [], black: [] };
+    const history = currentGame?.moveHistory || [];
+    if (!history.length) return captured;
+
+    let board = game.initializeBoard();
+    history.forEach(move => {
+        // כאן נמצא המצב המדויק שקדם למהלך הנוכחי.
+        // כך גם מהלכים מיוחדים כמו טיול או החלפת רגליים לא משבשים את זיהוי האכילות.
+        const from = game.notationToSquare(move.from);
+        const to = game.notationToSquare(move.to);
+        const movingPiece = board[from.row]?.[from.col];
+        const targetPiece = board[to.row]?.[to.col];
+        let capturedPiece = targetPiece && targetPiece.color !== move.color ? targetPiece : null;
+
+        // אכילת רגל בדרך־עקיפה: הרגל נאכל מהריבוע לצד היעד ולא מריבוע היעד עצמו.
+        if (!capturedPiece && move.piece === 'pawn' && from.col !== to.col) {
+            const enPassantPiece = board[from.row]?.[to.col];
+            if (enPassantPiece && enPassantPiece.type === 'pawn' && enPassantPiece.color !== move.color) {
+                capturedPiece = enPassantPiece;
+            }
+        }
+
+        if (capturedPiece && move.color === 'white') captured.white.push(capturedPiece);
+        if (capturedPiece && move.color === 'black') captured.black.push(capturedPiece);
+
+        if (capturedPiece && move.piece === 'pawn' && !targetPiece) {
+            board[from.row][to.col] = null;
+        }
+        if (movingPiece) {
+            board[from.row][from.col] = null;
+            board[to.row][to.col] = { ...movingPiece, type: move.promotion || movingPiece.type };
+        }
+        if (move.fen) board = game.fenToBoard(move.fen);
+    });
+
+    return captured;
+}
+
+function renderCapturedPieces() {
+    const captured = getCapturedPiecesByPlayer();
+    const viewerColor = getCurrentPlayerColor();
+    const trays = {
+        white: document.getElementById('captured-by-white'),
+        black: document.getElementById('captured-by-black')
+    };
+
+    Object.entries(trays).forEach(([color, tray]) => {
+        if (!tray) return;
+        tray.innerHTML = '';
+        captured[color].forEach(piece => {
+            const capturedPiece = document.createElement('div');
+            capturedPiece.className = `captured-piece ${piece.color}`;
+            capturedPiece.innerHTML = getPieceSvg(piece.type);
+            capturedPiece.setAttribute('aria-label', `${piece.color === 'white' ? 'כלי לבן' : 'כלי שחור'} ${getPieceTypeName(piece.type)} שנאכל`);
+            tray.appendChild(capturedPiece);
+        });
+    });
+
+    const boardWithCaptures = document.getElementById('board-with-captures');
+    if (boardWithCaptures) {
+        boardWithCaptures.classList.toggle('viewer-white', viewerColor === 'white');
+        boardWithCaptures.classList.toggle('viewer-black', viewerColor === 'black');
+    }
+}
+
 function renderChessBoard(fen, currentTurn) {
     const boardElement = document.getElementById('game-board');
     if (!boardElement) return;
@@ -1591,6 +1668,8 @@ function renderChessBoard(fen, currentTurn) {
             boardElement.appendChild(square);
         }
     }
+
+    renderCapturedPieces();
 
     // מאזין יחיד ויציב: אין להוסיף מאזין נוסף בכל רינדור.
     boardElement.onclick = event => {
