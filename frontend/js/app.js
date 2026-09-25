@@ -35,6 +35,7 @@ let activeHistoryAccount = null;
 let historyLoading = false;
 let historyFinished = false;
 let previousScreenBeforeHistory = 'games';
+let lastNonGameScreen = 'home';
 const screenHistory = [];
 let pendingLeaveScreen = null;
 let leaveConfirmationInProgress = false;
@@ -95,6 +96,9 @@ function restoreLastScreen() {
     }
 
     const lastScreen = localStorage.getItem(getUserStateKey('last_screen'));
+    if (['home', 'games', 'dashboard', 'account-settings'].includes(lastScreen)) {
+        lastNonGameScreen = lastScreen;
+    }
     if (lastScreen === 'player-history') {
         const account = localStorage.getItem(getUserStateKey('history_account'));
         if (account) {
@@ -311,10 +315,11 @@ function showScreen(screenName) {
     }
 
     if (currentScreen) screenHistory.push(currentScreen);
+    if (screenName !== 'game' && currentScreen !== 'game') lastNonGameScreen = screenName;
     applyScreen(screenName);
 }
 
-function goBack(fallback = 'home') {
+function goBack(fallback = lastNonGameScreen || 'home') {
     const previousScreen = getPreviousScreen(fallback);
     if (shouldWarnBeforeLeavingGame(previousScreen)) {
         pendingLeaveScreen = previousScreen;
@@ -352,6 +357,7 @@ function applyScreen(screenName) {
 
     // עדכון מסך נוכחי
     currentScreen = screenName;
+    if (screenName !== 'game') lastNonGameScreen = screenName;
     document.body.classList.toggle('admin-mode', screenName === 'admin' || screenName === 'admin-login');
     document.body.classList.toggle('game-screen-active', screenName === 'game');
     if (auth.currentUser && screenName !== 'auth') setUserState('last_screen', screenName);
