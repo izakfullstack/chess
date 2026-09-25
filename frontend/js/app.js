@@ -1747,37 +1747,36 @@ function isCurrentPlayerTurn() {
 
 function handleSquareClick(row, col) {
     if (!currentGame || currentGame.status !== 'active' || historicalGameView || !isCurrentPlayerTurn()) return;
+
     const legalMoves = currentGame.legalMoves || [];
-    const notation = game.squareToNotation(row, col);
     const board = game.fenToBoard(currentGame.board);
     const pieceOnSquare = board[row]?.[col] || null;
 
+    // מצב הבחירה נשמר רק על כלי של השחקן בתורו. כל יעד אכילה נשלח
+    // רק דרך רשימת המהלכים החוקיים שהשרת החזיר, כדי לא להמיר סימון
+    // ויסוד מקומי למהלך שהשרת ידחה.
     if (selectedSquare) {
-        const move = legalMoves.find(item =>
-            item.from.row === selectedSquare.row && item.from.col === selectedSquare.col && item.to.row === row && item.to.col === col);
-        if (move) {
-            selectedSquare = null;
-            submitMoveToServer(notationFromSquare(move.from), notationFromSquare(move.to), move.promotion);
-            return;
-        }
-
-        const fromSquare = notationFromSquare(selectedSquare);
-        const fromPiece = board[selectedSquare.row]?.[selectedSquare.col];
-        const isValidClientMove = fromPiece && game.isValidMove(
-            board,
-            { row: selectedSquare.row, col: selectedSquare.col },
-            { row, col },
-            fromPiece
+        const selectedPiece = board[selectedSquare.row]?.[selectedSquare.col];
+        const legalMove = legalMoves.find(item =>
+            item.from.row === selectedSquare.row &&
+            item.from.col === selectedSquare.col &&
+            item.to.row === row &&
+            item.to.col === col
         );
-        if (isValidClientMove && (!pieceOnSquare || pieceOnSquare.color !== fromPiece.color)) {
+
+        if (legalMove && selectedPiece?.color === currentGame.currentTurn) {
             selectedSquare = null;
-            submitMoveToServer(fromSquare, notation);
+            submitMoveToServer(notationFromSquare(legalMove.from), notationFromSquare(legalMove.to), legalMove.promotion);
             return;
         }
     }
 
-    const canSelect = legalMoves.some(move => move.from.row === row && move.from.col === col)
-        || (pieceOnSquare && pieceOnSquare.color === currentGame.currentTurn);
+    const canSelect = Boolean(
+        pieceOnSquare &&
+        pieceOnSquare.color === currentGame.currentTurn &&
+        legalMoves.some(move => move.from.row === row && move.from.col === col)
+    );
+
     selectedSquare = canSelect ? { row, col } : null;
     renderChessBoard(currentGame.board, currentGame.currentTurn);
 }
