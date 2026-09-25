@@ -1588,19 +1588,16 @@ function renderChessBoard(fen, currentTurn) {
         }
     }
 
-    // מאזין מרכזי לבחירת ריבוע; תפס גם לחיצה על SVG הכלי.
-    boardElement.addEventListener('click', event => {
+    // מאזין יחיד ויציב: אין להוסיף מאזין נוסף בכל רינדור.
+    boardElement.onclick = event => {
         const square = event.target.closest('.square');
         if (!square || !boardElement.contains(square)) return;
         const row = Number.parseInt(square.dataset.row, 10);
         const col = Number.parseInt(square.dataset.col, 10);
-        if (Number.isInteger(row) && Number.isInteger(col)) {
-            handleSquareClick(row, col);
-        }
-    });
-    // הוספת מאזיני אירועים לאזור שחרור
-    boardElement.addEventListener('dragover', handleDragOver);
-    boardElement.addEventListener('drop', handleDrop);
+        if (Number.isInteger(row) && Number.isInteger(col)) handleSquareClick(row, col);
+    };
+    boardElement.ondragover = handleDragOver;
+    boardElement.ondrop = handleDrop;
 }
 
 /**
@@ -1675,11 +1672,15 @@ function handleSquareClick(row, col) {
             return;
         }
 
-        // גיבוי למצב שבו רשימת המהלכים עוד לא הסתיימה להיטען: אכילה ישירה
-        // עדיין נבדקת במלואה בשרת לפני שמירתה.
         const fromSquare = notationFromSquare(selectedSquare);
         const fromPiece = board[selectedSquare.row]?.[selectedSquare.col];
-        if (fromPiece && pieceOnSquare && pieceOnSquare.color !== fromPiece.color) {
+        const isValidClientMove = fromPiece && game.isValidMove(
+            board,
+            { row: selectedSquare.row, col: selectedSquare.col },
+            { row, col },
+            fromPiece
+        );
+        if (isValidClientMove && (!pieceOnSquare || pieceOnSquare.color !== fromPiece.color)) {
             selectedSquare = null;
             submitMoveToServer(fromSquare, notation);
             return;

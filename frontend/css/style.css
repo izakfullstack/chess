@@ -777,7 +777,7 @@ input[readonly] {
 
 .game-main {
     min-width: 0;
-    min-height: calc(100vh - 8rem);
+    min-height: 0;
     display: flex;
     flex-direction: column;
     perspective: 1200px;
@@ -996,13 +996,26 @@ body.game-screen-active #center-board-global {
     position: fixed;
     right: 1rem;
     bottom: 4.75rem;
+    width: 7rem;
+    height: 7rem;
+    min-width: 7rem;
+    padding: 0.35rem;
+    border: 2px solid rgba(255, 255, 255, 0.92);
+    border-radius: 50%;
     z-index: 2147483000;
     display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto;
     margin: 0;
-    box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.35);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    line-height: 1.05;
+    text-align: center;
+    white-space: normal;
+    box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .game-status {
@@ -3069,16 +3082,55 @@ body:has(#screen-game.active) {
 
 @media (max-width: 768px) {
     .game-main {
-        min-height: calc(100vh - 6rem);
-        min-height: calc(100dvh - 6rem);
+        min-height: 0;
     }
 
     .chess-board-stage {
         width: min(100%, 32rem);
+        max-width: 100%;
     }
 
     #game-title {
         text-align: center;
     }
+
+    body.game-screen-active #center-board-global {
+        width: 6rem !important;
+        height: 6rem !important;
+        min-width: 6rem !important;
+    }
+}
+
+/* ===== מיקום לוח יציב לאחר טעינה מחדש ===== */
+body.game-screen-active .main-content {
+    width: min(100% - 2rem, 1200px);
+    max-width: 1200px;
+}
+
+/* ===== מרכז לוח: עגול, בגודל שמציג את הטקסט, עם ארבעה קווים לבנים ===== */
+body.game-screen-active #center-board-global {
+    position: relative;
+    width: 7rem;
+    height: 7rem;
+    min-width: 7rem;
+    border-radius: 50%;
+}
+
+body.game-screen-active #center-board-global::before,
+body.game-screen-active #center-board-global::after {
+    content: '';
+    position: absolute;
+    inset: 0.35rem;
+    pointer-events: none;
+}
+
+body.game-screen-active #center-board-global::before {
+    border-top: 2px solid rgba(255, 255, 255, 0.95);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.95);
+}
+
+body.game-screen-active #center-board-global::after {
+    border-left: 2px solid rgba(255, 255, 255, 0.95);
+    border-right: 2px solid rgba(255, 255, 255, 0.95);
 }
 
