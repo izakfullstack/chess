@@ -3193,14 +3193,7 @@ body:has(#screen-game.active) {
 
 @media (max-width: 768px) {
     .center-guide-line {
-        width: 2px;
-        height: 1rem;
-    }
-
-    .center-guide-right,
-    .center-guide-left {
         width: 1rem;
-        height: 2px;
     }
 
     .board-with-captures {
@@ -3261,17 +3254,6 @@ body.game-screen-active .main-content {
     max-width: 1200px;
 }
 
-body.game-screen-active .site-header {
-    position: fixed;
-    inset: 0 0 auto;
-    width: 100%;
-    z-index: var(--z-popover);
-}
-
-body.game-screen-active .main-content {
-    padding-top: 4.5rem;
-}
-
 body.game-screen-active .site-header,
 body.game-screen-active .header-content {
     transform: none;
@@ -3295,8 +3277,8 @@ body.game-screen-active #center-board-global {
 .center-guide-line {
     position: absolute;
     display: block;
-    width: 2px;
-    height: 1.25rem;
+    width: 1.25rem;
+    height: 2px;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 999px;
     pointer-events: none;
@@ -3311,9 +3293,7 @@ body.game-screen-active #center-board-global {
 .center-guide-right {
     right: -10px;
     top: 50%;
-    width: 1.25rem;
-    height: 2px;
-    transform: translateY(-50%);
+    transform: translateY(-50%) rotate(90deg);
 }
 
 .center-guide-bottom {
@@ -3325,8 +3305,6 @@ body.game-screen-active #center-board-global {
 .center-guide-left {
     left: -10px;
     top: 50%;
-    width: 1.25rem;
-    height: 2px;
-    transform: translateY(-50%);
+    transform: translateY(-50%) rotate(90deg);
 }
 
