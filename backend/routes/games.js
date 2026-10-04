@@ -817,8 +817,9 @@ router.get('/:id', (req, res) => {
                             fen: boardToFen(board)
                         });
                     }
+                    // תמיד לבן מתחיל: במשחק חדש התור הראשון שייך ללבן, ללא קשר לצבע שהוקצה לשחקן הראשון.
                     const currentTurn = moves.length === 0
-                        ? (game.player1_color || WHITE)
+                        ? WHITE
                         : (moves[moves.length - 1].color === WHITE ? BLACK : WHITE);
                     const requesterColor = requesterAccount === String(game.player1_number) ? (game.player1_color || currentTurn)
                         : requesterAccount === String(game.player2_number) ? (game.player2_color || (currentTurn === WHITE ? BLACK : WHITE)) : null;
@@ -898,8 +899,9 @@ router.post('/:id/move', (req, res) => {
                         lastMove = { ...move, fromRow: from.row, fromCol: from.col, toRow: to.row, toCol: to.col, fromSquare: move.from_square, toSquare: move.to_square };
                     }
 
+                    // תמיד לבן מתחיל את המשחק, גם אם הוקצה לו צבע שחור.
                     const currentPlayer = moves.length === 0
-                        ? (game.player1_color || WHITE)
+                        ? WHITE
                         : (moves[moves.length - 1].color === WHITE ? BLACK : WHITE);
                     const from = notationToSquare(playerFrom);
                     const to = notationToSquare(playerTo);
@@ -956,14 +958,18 @@ router.post('/:id/move', (req, res) => {
                                         }
 
                                         if (gameState === 'checkmate') {
+                                            // הזוכר הוא בעל הצבע שביצע את המהלך המניח - לא "שחקן 1" בהכרח.
+                                            const winnerId = (game.player1_color || WHITE) === currentPlayer
+                                                ? game.player1_id
+                                                : game.player2_id;
                                             db.run(
                                                 'UPDATE games SET winner_id = ? WHERE id = ?',
-                                                [currentPlayer === WHITE ? game.player1_id : game.player2_id, gameId],
+                                                [winnerId, gameId],
                                                 (winnerErr) => {
                                                     if (winnerErr) {
                                                         return res.status(500).json({ error: 'Failed to update winner' });
                                                     }
-                                                    updateGameStatusAndRating(gameId, currentPlayer === WHITE ? game.player1_id : game.player2_id);
+                                                    updateGameStatusAndRating(gameId, winnerId);
                                                 }
                                             );
                                         } else {
