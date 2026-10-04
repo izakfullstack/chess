@@ -1490,8 +1490,22 @@ function setupBoardControls() {
 
     stage.addEventListener('contextmenu', event => event.preventDefault());
 
+    /**
+     * בודק אם הנקודה שנלחצה נמצאת על הלוח המוצג בפועל.
+     * כשהלוח מוטה, שולי התיבה המרובעת חופשיים מהלוח עצמו,
+     * ולכן אין להתחיל גרירה או סיבוב מעבר לו.
+     * הבדיקה מסתמכת על מה שהדפדפן באמת צייר בנקודה הזו.
+     */
+    const isOnBoard = event => {
+        const hit = document.elementFromPoint(event.clientX, event.clientY);
+        if (!hit) return false;
+        return board.contains(hit) || hit === board;
+    };
+
     stage.addEventListener('pointerdown', event => {
         if (event.button !== 0 && event.button !== 2) return;
+        // מתחילים רק אם הלחיצה נפלה על הלוח המוצג, לא על ריק שסביבו.
+        if (!isOnBoard(event)) return;
         // הסיבוב מתחיל בלחיצה שמאלית וההזזה בלחיצה ימנית, בכל נקודה על הלוח.
         // לחיצה פשוטה ללא תנועה עדיין מגיעה לבחירת הכלי דרך ה-click.
         mode = event.button === 2 ? 'pan' : 'rotate';
