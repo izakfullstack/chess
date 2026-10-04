@@ -1087,7 +1087,7 @@ input[readonly] {
     align-items: center;
     justify-content: center;
     gap: var(--spacing-lg);
-    margin: calc(var(--spacing-md) * -1.4) 0 var(--spacing-md);
+    margin: calc(var(--spacing-md) * -2) 0 var(--spacing-md);
 }
 
 .move-number {
