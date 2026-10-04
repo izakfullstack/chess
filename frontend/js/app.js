@@ -1504,8 +1504,12 @@ function setupBoardControls() {
 
     stage.addEventListener('pointerdown', event => {
         if (event.button !== 0 && event.button !== 2) return;
-        // מתחילים רק אם הלחיצה נפלה על הלוח המוצג, לא על ריק שסביבו.
-        if (!isOnBoard(event)) return;
+        // הלחיצה לא נפלה על הלוח המוצג. מבטלים את ברירת המחדל של הדפדפן
+        // כדי שלא יופיע סימון גרירה או תפריט לחיצה ימנית על ריק.
+        if (!isOnBoard(event)) {
+            event.preventDefault();
+            return;
+        }
         // הסיבוב מתחיל בלחיצה שמאלית וההזזה בלחיצה ימנית, בכל נקודה על הלוח.
         // לחיצה פשוטה ללא תנועה עדיין מגיעה לבחירת הכלי דרך ה-click.
         mode = event.button === 2 ? 'pan' : 'rotate';
@@ -1518,6 +1522,13 @@ function setupBoardControls() {
         startTilt = numberOn(board, '--board-tilt-x');
         stage.classList.toggle('panning', mode === 'pan');
         stage.classList.toggle('rotating', mode === 'rotate');
+        // הכברת ברירת המחדל גם כאן, כדי שאין סימון גרירת תמונה גם בתוך הלוח.
+        event.preventDefault();
+    });
+
+    // הלחיצה הימנית מועברת לעכבר הימני במקום לפתוח תפריט מערכת.
+    stage.addEventListener('mousedown', event => {
+        if (event.button === 2) event.preventDefault();
     });
 
     // מאזינים גלוביים מאפשרים להמשיך לגרור גם אם העכבר יצא מגבולות הלוח.

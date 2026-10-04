@@ -918,6 +918,11 @@ input[readonly] {
     margin: var(--spacing-md) auto;
     transform: translate3d(var(--board-pan-x, 0), var(--board-pan-y, 0px), 0);
     transform-origin: 50% 50%;
+    /* מונע גרירת תמונה ובחירת טקסט אם הלחיצה מתחילה מחוץ ללוח המוצג */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
     /* פרספקטיבה יחידה לכל הלוח – נמצאת כאב ההיט-טסטינג בהטיה */
     transform-style: flat;
     perspective: 1600px;
