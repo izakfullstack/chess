@@ -47,7 +47,8 @@ let handledAcceptedInvites = new Set();
 let opponentResignationNoticeShown = false;
 let accountSettingsMessageTimer = null;
 let accountSettingsDirty = false;
-const BOARD_DEFAULT_PAN_Y = '-5.2rem';
+const BOARD_DEFAULT_PAN_Y = '0px';
+const BOARD_DEFAULT_STAGE_TOP = '-2rem';
 const BOARD_DEFAULT_TILT = '30deg';
 const BOARD_DEFAULT_TOP_OFFSET = '-4rem';
 const BOARD_MAX_TILT = 50;
@@ -1466,8 +1467,8 @@ function resetBoardView() {
     if (!stage) return;
 
     stage.style.setProperty('--board-pan-x', '0px');
-    stage.style.top = '-5rem';
-    stage.style.setProperty('--board-pan-y', '0px');
+    stage.style.top = BOARD_DEFAULT_STAGE_TOP;
+    stage.style.setProperty('--board-pan-y', BOARD_DEFAULT_PAN_Y);
     board?.style.setProperty('--board-rotate', '0deg');
     board?.style.setProperty('--board-tilt-x', BOARD_DEFAULT_TILT);
     stage.classList.remove('panning', 'rotating');
