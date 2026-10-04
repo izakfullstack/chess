@@ -3485,6 +3485,8 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
     order: 2;
     margin: 0;
     flex: 0 0 auto;
+    /* מרחק אוטומטי משמאל דוחק את הסטטוס לקצה הימני של המסך */
+    margin-left: auto;
 }
 
 @media (max-width: 640px) {
