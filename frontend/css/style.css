@@ -793,13 +793,12 @@ input[readonly] {
 .board-with-captures {
     position: relative;
     top: -5rem;
-    width: min(100%, calc(42rem + 8rem));
+    width: 100%;
     margin: 0;
     display: grid;
-    grid-template-columns: 4.5rem minmax(0, 42rem);
+    grid-template-columns: 1fr minmax(0, 42rem) 1fr;
     align-items: stretch;
-    justify-content: start;
-    justify-items: start;
+    justify-content: center;
     direction: ltr;
 }
 
@@ -807,8 +806,12 @@ input[readonly] {
    עמודה אחת בצד שמאל של הלוח. בכל שורה זוג: כלי היריב (שמאל) מול כלי השחקן (ימין).
    הכלים היקרים ממוקמים למעלה והזולים למטה. */
 .material-scale {
+    /* ממוקמת באופן מוחלט בקצה השמאלי, בלי להשפיע על מיקום הלוח */
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4.5rem;
     min-width: 0;
-    align-self: stretch;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -909,8 +912,12 @@ input[readonly] {
 }
 
 .material-scale {
-    grid-column: 1;
-    grid-row: 1;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4.5rem;
+    grid-column: auto;
+    grid-row: auto;
 }
 
 .board-with-captures .chess-board-stage {
@@ -3280,7 +3287,7 @@ body:has(#screen-game.active) {
 @media (max-width: 768px) {
     .board-with-captures {
         width: 100%;
-        grid-template-columns: 2.5rem minmax(0, 32rem);
+        grid-template-columns: 1fr minmax(0, 32rem) 1fr;
         justify-items: stretch;
     }
 
@@ -3309,12 +3316,23 @@ body:has(#screen-game.active) {
 
     .board-with-captures {
         width: 100%;
-        grid-template-columns: 2.5rem minmax(0, 32rem);
+        grid-template-columns: 1fr minmax(0, 32rem) 1fr;
     }
 
     .material-scale {
+        /* במובייל אין מספיק מקום משמאל ללוח - המשוואה חוזרת להיות תא ברשת */
+        position: static;
+        grid-column: 1;
+        grid-row: 1;
+        width: auto;
+        align-self: stretch;
         gap: 0.1rem;
         padding-inline: 0.1rem;
+    }
+
+    .board-with-captures {
+        width: 100%;
+        grid-template-columns: 2.5rem minmax(0, 32rem) 1fr;
     }
 
     .material-row {
@@ -3502,13 +3520,12 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
     direction: ltr;
     text-align: left;
     white-space: nowrap;
-    margin-left: -1.25rem;
 }
 
 .game-heading #game-title {
     order: 1;
     margin: 0;
-    transform: translateX(-3.25rem);
+    transform: translateX(-2.5rem);
 }
 
 .game-heading #game-status {
