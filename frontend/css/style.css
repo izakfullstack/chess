@@ -333,6 +333,12 @@ p {
     display: block;
 }
 
+/* ביטול אנימציית המעבר בטענה הראשונה, כדי שהמסך לא יקפוץ כלפי מעלה */
+body.no-screen-animation .screen,
+body.no-screen-animation .screen.active {
+    animation: none;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -3236,15 +3242,11 @@ body:has(#screen-game.active) {
 }
 
 /* ===== מיקום לוח יציב לאחר טעינה מחדש ===== */
+/* כלל אחד בלבד: הכלל ששוכפל פעמיים בעבר והכפיל את החישוב */
 body.game-screen-active .main-content {
     width: min(100% - 2rem, 1200px);
     max-width: 1200px;
-}
-
-/* ===== ייצוב קבוע למסך המשחק לאחר טעינה מחדש ===== */
-body.game-screen-active .main-content {
-    width: min(100% - 2rem, 1200px);
-    max-width: 1200px;
+    padding-top: 4.5rem;
 }
 
 body.game-screen-active .site-header {
@@ -3252,10 +3254,6 @@ body.game-screen-active .site-header {
     inset: 0 0 auto;
     width: 100%;
     z-index: var(--z-popover);
-}
-
-body.game-screen-active .main-content {
-    padding-top: 4.5rem;
 }
 
 body.game-screen-active .site-header,

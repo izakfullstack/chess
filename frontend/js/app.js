@@ -91,7 +91,10 @@ function restoreLastScreen() {
     const lastGameId = localStorage.getItem(getUserStateKey('last_game_id'));
     if (lastGameId) {
         const historical = localStorage.getItem(getUserStateKey('last_game_historical')) === '1';
+        // המחלקה מתווספת לפני הטעינה האסינכרונית, כדי שהדפדפן
+        // יצר את פריסת מסך המשחק הנכונה כבר בטעינה הראשונה.
         applyScreen('game');
+        suppressInitialScreenAnimation();
         loadGame(lastGameId, historical);
         return;
     }
@@ -338,6 +341,20 @@ function goBack(fallback = lastNonGameScreen || 'home') {
 }
 
 /**
+ * מבטל את אנימציית המעבר בין מסכים בטעינה הראשונה בלבד.
+ * האנימציה גורמת למסך לקפוץ 10 פיקסלים כלפי מעלה בכל טעינה מחדש,
+ * ולכן היא מושבתת רק בפעם הראשונה ואחר כך פועלת כרגיל במעברים ידניים.
+ */
+function suppressInitialScreenAnimation() {
+    document.body.classList.add('no-screen-animation');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        window.setTimeout(() => {
+            document.body.classList.remove('no-screen-animation');
+        }, 60);
+    }));
+}
+
+/**
  * הצגת המסך בפועל (ללא בדיקת אזהרת יציאה)
  */
 function applyScreen(screenName) {
@@ -353,18 +370,19 @@ function applyScreen(screenName) {
         screen.classList.remove('active');
     });
 
-    // הצגת מסך יעד
-    const targetScreen = document.getElementById(`screen-${screenName}`);
-    if (targetScreen) {
-        targetScreen.classList.add('active');
-    }
-
-    // עדכון מסך נוכחי
+    // עדכון מצב הגוף לפני הצגת המסך, כדי שכללי ה-CSS של מסך המשחק
+    // יחולו כבר ברגע הראשון והפריסה לא תקפוץ אחרי הטעינה.
     currentScreen = screenName;
     if (screenName !== 'game') lastNonGameScreen = screenName;
     document.body.classList.toggle('admin-mode', screenName === 'admin' || screenName === 'admin-login');
     document.body.classList.toggle('game-screen-active', screenName === 'game');
     if (auth.currentUser && screenName !== 'auth') setUserState('last_screen', screenName);
+
+    // הצגת מסך יעד
+    const targetScreen = document.getElementById(`screen-${screenName}`);
+    if (targetScreen) {
+        targetScreen.classList.add('active');
+    }
 
     // טיפול בלוגיקה ספציפית למסך
     switch (screenName) {
