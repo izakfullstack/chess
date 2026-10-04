@@ -3509,8 +3509,8 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
     right: 0;
     width: auto;
     box-sizing: border-box;
-    /* רווח טיפוגרפי בלבד: דיווח משמאל, מעט יותר מימין */
-    padding: 0 0.6rem 0 1.5rem;
+    /* רווח טיפוגרפי זהה בשני הצדדים: הכותרת משמאל, הסטטוס מימין */
+    padding: 0 2.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3545,7 +3545,7 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
 @media (max-width: 640px) {
     .game-heading {
         top: 4.1rem;
-        padding: 0 0.35rem 0 0.75rem;
+        padding: 0 1rem;
         gap: 0.55rem;
     }
 
