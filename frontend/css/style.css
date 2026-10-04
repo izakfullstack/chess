@@ -808,9 +808,9 @@ input[readonly] {
 .material-scale {
     /* ממוקמת באופן מוחלט בקצה השמאלי, בלי להשפיע על מיקום הלוח */
     position: absolute;
-    left: -1.5rem;
+    left: -6rem;
     top: 1.5rem;
-    width: 4.5rem;
+    width: 9rem;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -831,16 +831,24 @@ input[readonly] {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.1rem;
+    flex-wrap: wrap;
+    gap: 0.05rem;
     padding: 0.1rem 0.15rem;
     border-radius: 8px;
     background: none;
     border: none;
     box-shadow: none;
     min-height: 2.15rem;
+    max-width: 100%;
 }
 
 /* הכלים היקרים יותר מקבלים מודגשות קלה בלבד (בלי רקע) */
+.material-row[data-weight='6'] {
+    background: none;
+    border: none;
+    filter: drop-shadow(0 0 5px rgba(253, 224, 71, 0.65));
+}
+
 .material-row[data-weight='5'] {
     background: none;
     border: none;
@@ -866,8 +874,8 @@ input[readonly] {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.9rem;
-    height: 1.9rem;
+    width: 1.55rem;
+    height: 1.55rem;
     color: #63402d;
     filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
     pointer-events: none;
@@ -917,9 +925,9 @@ input[readonly] {
 
 .material-scale {
     position: absolute;
-    left: -1.5rem;
+    left: -6rem;
     top: 1.5rem;
-    width: 4.5rem;
+    width: 9rem;
     grid-column: auto;
     grid-row: auto;
 }

@@ -1653,44 +1653,46 @@ function renderCapturedPieces() {
 
     const opponentColor = viewerColor === 'white' ? 'black' : 'white';
 
-    // ספירת כלי היריב שנאכלו מול כלי השחקן שנאכלו, לפי סוג כלי
-    const PIECE_WEIGHT = { queen: 5, rook: 4, bishop: 3, knight: 3, pawn: 1 };
-    const countByType = { opponent: {}, viewer: {} };
+    // ערך הכלי - המלך הכי חשוב למעלה, החייל הכי נמוך למטה
+    const PIECE_WEIGHT = { king: 6, queen: 5, rook: 4, bishop: 3, knight: 3, pawn: 1 };
+    const PIECE_ORDER = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
 
-    captured[opponentColor].forEach(piece => {
-        countByType.opponent[piece.type] = (countByType.opponent[piece.type] || 0) + 1;
-    });
-    captured[viewerColor].forEach(piece => {
-        countByType.viewer[piece.type] = (countByType.viewer[piece.type] || 0) + 1;
-    });
-
-    // סדר עולה לפי ערך הכלי: המלכה למעלה, הרגליים למטה
-    const order = Object.keys(PIECE_WEIGHT)
-        .sort((a, b) => PIECE_WEIGHT[b] - PIECE_WEIGHT[a]);
+    // קיבוץ הכלים שנאכלו לפי סוג וצבע, כדי להציג קבוצה שלמה בשורה אחת
+    const groupByType = color => {
+        const groups = {};
+        captured[color].forEach(piece => {
+            (groups[piece.type] = groups[piece.type] || []).push(piece.color);
+        });
+        return groups;
+    };
+    const enemyGroups = groupByType(opponentColor);
+    const viewerGroups = groupByType(viewerColor);
 
     scale.innerHTML = '';
 
-    order.forEach(type => {
-        const enemyCount = countByType.opponent[type] || 0;
-        const ownCount = countByType.viewer[type] || 0;
-        if (!enemyCount && !ownCount) return;
+    PIECE_ORDER.forEach(type => {
+        const enemyPieces = enemyGroups[type] || [];
+        const viewerPieces = viewerGroups[type] || [];
+        if (!enemyPieces.length && !viewerPieces.length) return;
 
         const row = document.createElement('div');
         row.className = 'material-row';
         row.dataset.weight = String(PIECE_WEIGHT[type]);
-        row.setAttribute('aria-label', `${getPieceTypeName(type)}: ${enemyCount} אצל היריב, ${ownCount} אצל השחקן`);
+        row.setAttribute('aria-label', `${getPieceTypeName(type)}: ${enemyPieces.length} אצל היריב, ${viewerPieces.length} אצל השחקן`);
 
-        // משבצת השחקן ימנית במסך, משבצת היריב לשמאלה - צמודות כמו במשוואה
-        [viewerColor, opponentColor].forEach(color => {
-            const count = color === viewerColor ? ownCount : enemyCount;
-            const slot = document.createElement('span');
-            slot.className = `material-slot ${color}`;
-            if (count > 0) slot.innerHTML = getPieceSvg(type);
-            slot.setAttribute('aria-label', count > 0
-                ? `${count} ${getPieceTypeName(type)} ${color === 'white' ? 'לבנים' : 'שחורים'}`
-                : 'אין כלים');
-            row.appendChild(slot);
-        });
+        // כל כלי שנאכל מוצג בפועל. צד שאין לו כלים פשוט לא מוצג - הפער בעצמו מראה את החוסרון.
+        const appendGroup = (pieces, color) => {
+            pieces.forEach(() => {
+                const slot = document.createElement('span');
+                slot.className = `material-slot ${color}`;
+                slot.innerHTML = getPieceSvg(type);
+                row.appendChild(slot);
+            });
+        };
+
+        // כלי היריב משמאל, כלי השחקן מימין - ושניהם צמודים כמו במשוואה
+        appendGroup(enemyPieces, opponentColor);
+        appendGroup(viewerPieces, viewerColor);
 
         scale.appendChild(row);
     });
