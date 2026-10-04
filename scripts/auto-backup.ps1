@@ -105,25 +105,43 @@ function Test-RepoChanged {
 }
 
 <#
+    מריץ פקודת git בלי ש-powershell יתיישם על הפלט של git.
+    git כותב הודעות אזהרה ל-stderr (למשל המרת שורות EOL) ואלו אינן שגיאה,
+    אך עם ErrorActionPreference = 'Stop' הן מפילות את הסקריפט.
+#>
+function Invoke-Git {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = & git @Arguments 2>&1
+        return $output
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+<#
     יוצר commit אם יש שינויים. מחזיר true אם נשמר.
 #>
 function Save-Change {
     param([string]$Reason = 'change')
 
-    $status = git status --porcelain
+    $status = Invoke-Git 'status' '--porcelain'
     if (-not $status) { return $false }
 
     $count = @($status).Count
     $time = Get-Date -Format 'HH:mm:ss'
 
-    git add --all 2>$null
+    [void](Invoke-Git 'add' '--all')
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[$time] Could not stage files - skipped." -ForegroundColor Red
         return $false
     }
 
     $message = "Auto-backup ($Reason) - $time"
-    git commit -m $message 2>$null
+    [void](Invoke-Git 'commit' '-m' $message)
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[$time] Nothing new to save." -ForegroundColor DarkGray
         return $false
@@ -147,7 +165,7 @@ try {
     while ($true) {
         Start-Sleep -Seconds 2
 
-        $current = @(git status --porcelain)
+        $current = @(Invoke-Git 'status' '--porcelain')
 
         # --- מצב נקי: אין מה לשמור -------------------------------------------
         if ($current.Count -eq 0) {
@@ -201,6 +219,7 @@ try {
 } catch {
     Write-Host ""
     Write-Host "Auto-backup stopped." -ForegroundColor Yellow
-    Write-Host $_.Exception.Message -ForegroundColor Red
+    Write-Host ("Error: " + $_.Exception.Message) -ForegroundColor Red
+    Write-Host ("Line " + $_.InvocationInfo.ScriptLineNumber + ": " + $_.InvocationInfo.Line.Trim()) -ForegroundColor DarkRed
     exit 1
 }
