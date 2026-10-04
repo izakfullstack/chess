@@ -168,20 +168,6 @@ p {
     flex-wrap: wrap;
 }
 
-.logo {
-    font-size: var(--font-size-2xl);
-    font-weight: 700;
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-}
-
-.main-nav {
-    display: flex;
-    gap: var(--spacing-sm);
-}
-
 .header-left .btn,
 .header-left .players-button,
 .header-right .nav-button {
@@ -225,12 +211,6 @@ p {
     background-color: var(--primary);
     color: white;
     border-color: var(--primary);
-}
-
-.auth-area {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
 }
 
 .auth-status {
@@ -289,12 +269,6 @@ p {
     box-shadow: var(--shadow-md);
 }
 
-.btn-large {
-    padding: var(--spacing-md) var(--spacing-xl);
-    font-size: var(--font-size-base);
-    font-weight: 600;
-}
-
 .hidden {
     display: none !important;
 }
@@ -349,54 +323,7 @@ body.no-screen-animation .screen.active {
 }
 
 /* Hero section */
-.hero {
-    text-align: center;
-    padding: var(--spacing-2xl) 0;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.hero h1 {
-    margin-bottom: var(--spacing-md);
-}
-
-.hero p {
-    font-size: var(--font-size-lg);
-    margin-bottom: var(--spacing-xl);
-}
-
-.hero-actions {
-    display: flex;
-    gap: var(--spacing-md);
-    justify-content: center;
-}
-
 /* Feature grid */
-.feature-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: var(--spacing-lg);
-    margin-top: var(--spacing-2xl);
-}
-
-.feature-card {
-    background-color: var(--surface);
-    padding: var(--spacing-lg);
-    border-radius: var(--radius-lg);
-    text-align: center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.feature-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-lg);
-}
-
-.feature-card h3 {
-    color: var(--primary);
-    margin-bottom: var(--spacing-sm);
-}
-
 /* Homepage scene */
 .home-stage {
     position: relative;
@@ -445,13 +372,6 @@ body.no-screen-animation .screen.active {
     padding: 1.45rem 2rem;
     font-size: 1.3rem;
     border-radius: 32px;
-}
-
-.secondaryrow {
-    display: flex;
-    gap: clamp(1.25rem, 3vw, 2.25rem);
-    flex-wrap: wrap;
-    justify-content: center;
 }
 
 .action-button {
@@ -1102,12 +1022,6 @@ input[readonly] {
         0 0 14px rgba(59, 130, 246, 0.55);
 }
 
-.piece.dragging {
-    opacity: 0.7;
-    transform: scale(1.1);
-    z-index: var(--z-modal);
-}
-
 .piece.white {
     color: #ffffff;
     filter: drop-shadow(0 0 1.5px rgba(36, 20, 13, 0.95)) drop-shadow(0 3px 1px rgba(0, 0, 0, 0.55));
@@ -1130,22 +1044,6 @@ input[readonly] {
     font-size: var(--font-size-base);
     color: var(--text-secondary);
     font-weight: 500;
-}
-
-.board-center-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: auto;
-    padding-top: var(--spacing-md);
-}
-
-#screen-game.active .board-center-actions {
-    position: fixed;
-    right: 1rem;
-    bottom: 1rem;
-    z-index: var(--z-sticky);
-    margin: 0;
-    padding: 0;
 }
 
 #center-board-global {
@@ -1186,40 +1084,7 @@ body.game-screen-active #center-board-global {
     color: #92400e;
 }
 
-.status-active {
-    background-color: #d1fae5;
-    color: #065f46;
-}
-
-.move-input-area {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-md);
-    margin: var(--spacing-lg) 0;
-    flex-wrap: wrap;
-}
-
-.move-input-area input {
-    width: 80px;
-    text-align: center;
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-}
-
 /* Game side panel */
-.game-side {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
-}
-
-.players-card {
-    background-color: var(--surface);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-md);
-}
-
 .player {
     display: flex;
     justify-content: space-between;
@@ -1232,25 +1097,9 @@ body.game-screen-active #center-board-global {
     border-bottom: none;
 }
 
-.player-info {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-}
-
 .player-account {
     font-weight: 600;
     color: var(--primary);
-}
-
-.player-rating {
-    font-size: var(--font-size-lg);
-    font-weight: 700;
-}
-
-.player-winner {
-    color: var(--success);
-    font-weight: 600;
 }
 
 /* Move history */
@@ -1343,22 +1192,6 @@ body.game-screen-active #center-board-global {
 
 .ranking-table tr:hover {
     background-color: var(--surface);
-}
-
-.player-row {
-    cursor: pointer;
-}
-
-.history-preview-button {
-    margin-inline-start: var(--spacing-sm);
-    padding: 0.25rem 0.5rem;
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.92);
-    color: var(--primary-dark);
-    cursor: pointer;
-    font: inherit;
-    font-size: var(--font-size-xs);
 }
 
 .player-preview {
@@ -1490,14 +1323,6 @@ body.game-screen-active #center-board-global {
     color: var(--text-primary);
     cursor: pointer;
     text-decoration: underline;
-}
-
-.admin-entry {
-    border: 0;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    font: inherit;
 }
 
 .admin-layout {
@@ -1817,12 +1642,6 @@ body.admin-profile-open {
     cursor: pointer;
 }
 
-.admin-secondary-form {
-    margin-top: var(--spacing-xl);
-    padding-top: var(--spacing-lg);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 .profile-logout {
     width: 100%;
     margin-top: var(--spacing-lg);
@@ -1926,15 +1745,6 @@ body.admin-profile-open {
 }
 
 /* Footer */
-.site-footer {
-    background-color: var(--surface);
-    border-top: 1px solid var(--border);
-    padding: var(--spacing-lg) 0;
-    text-align: center;
-    margin-top: var(--spacing-2xl);
-    color: var(--text-secondary);
-}
-
 /* AI/ML rating colors for display */
 .rating-excellent { color: var(--rating-excellent); }
 .rating-good { color: var(--rating-good); }
@@ -2022,11 +1832,6 @@ body.admin-profile-open {
 
     .mobile-menu .btn,
     .mobile-menu .players-button,
-    .mobile-menu .admin-entry {
-        width: 100%;
-        min-height: 2.5rem;
-    }
-
     .home-stage {
         min-height: clamp(30rem, 72vh, 42rem);
     }
@@ -2040,21 +1845,11 @@ body.admin-profile-open {
         margin-top: clamp(3rem, 10vh, 6rem);
     }
 
-    .secondaryrow {
-        flex-direction: column;
-        width: 100%;
-        gap: 1rem;
-    }
-
     .cta-button,
     .action-button {
         width: min(84vw, 260px);
     }
 
-    .hero-actions {
-        flex-direction: column;
-    }
-    
     .auth-card {
         width: min(100%, 30rem);
         margin: 0;
@@ -2073,22 +1868,10 @@ body.admin-profile-open {
         width: 100%;
     }
     
-    .move-input-area {
-        flex-direction: column;
-    }
-    
-    .move-input-area input {
-        width: 100%;
-    }
-    
     .game-layout {
         grid-template-columns: 1fr;
     }
     
-    .game-side {
-        order: -1;
-    }
-
     .dashboard-header,
     .rating-summary,
     .matchmaking-header,
@@ -2382,18 +2165,6 @@ body.admin-profile-open {
 
 .panel:has(.ranking-table) {
     overflow-x: auto;
-}
-
-.connected-menu {
-    position: absolute;
-    top: calc(100% + 0.45rem);
-    inset-inline-start: 0;
-    z-index: var(--z-popover);
-    padding: 0.45rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: rgba(11, 19, 33, 0.97);
-    box-shadow: var(--shadow-md);
 }
 
 .header-left {
@@ -2692,55 +2463,6 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
     margin-top: 0.8rem;
 }
 
-.managerRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    padding: 0.55rem 0.7rem;
-    background: rgba(8, 34, 62, 0.06);
-    border: 1px solid rgba(171, 137, 111, 0.35);
-    border-radius: 0.5rem;
-}
-
-.managerRow-name {
-    color: #27313d;
-    overflow-wrap: anywhere;
-}
-
-.managerRow-actions {
-    display: flex;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-}
-
-.managerRow-actions .btn {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.75rem;
-}
-
-.managerRow-actions .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.managerRow-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-    margin: -0.25rem 0 0.35rem;
-    padding: 0.6rem 0.7rem;
-    background: rgba(8, 34, 62, 0.05);
-    border: 1px dashed rgba(171, 137, 111, 0.5);
-    border-radius: 0.5rem;
-}
-
-.managerRow-form-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
 /* חיפוש שחקן בלוח השחקנים */
 .player-search {
     display: flex;
@@ -2961,12 +2683,6 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
     cursor: pointer;
 }
 
-.availability-control input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-}
-
 .availability-switch {
     width: 46px;
     height: 26px;
@@ -2987,10 +2703,6 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
     top: 3px;
     left: 3px;
     transition: transform 0.2s ease, background 0.2s ease;
-}
-
-.availability-control input:checked + .availability-switch {
-    background: #3b82f6;
 }
 
 .availability-control input:checked + .availability-switch span {
@@ -3088,8 +2800,7 @@ body:has(.account-settings-screen.active) {
     min-height: 100dvh;
 }
 
-body:has(.account-settings-screen.active) .site-header,
-body:has(.account-settings-screen.active) .site-footer {
+body:has(.account-settings-screen.active) .site-header {
     display: none;
 }
 
