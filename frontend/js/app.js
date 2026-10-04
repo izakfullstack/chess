@@ -84,6 +84,7 @@ function removeUserState(name) {
 function clearPersistedGameState() {
     removeUserState('last_game_id');
     removeUserState('last_game_historical');
+    removeUserState('game_entry_screen');
 }
 
 function restoreLastScreen() {
@@ -92,6 +93,15 @@ function restoreLastScreen() {
     const lastGameId = localStorage.getItem(getUserStateKey('last_game_id'));
     if (lastGameId) {
         const historical = localStorage.getItem(getUserStateKey('last_game_historical')) === '1';
+        // שחזור המסך שממנו נכנסו למשחק, כדי שכפתור "חזור" יחזיר לשם
+        // במקום לקפוץ ישירות לדף הראשי.
+        const entryKey = getUserStateKey('game_entry_screen');
+        const entryScreen = entryKey ? localStorage.getItem(entryKey) : null;
+        if (entryScreen && VALID_SCREENS.has(entryScreen) && entryScreen !== 'game') {
+            screenHistory.push(entryScreen);
+            gameEntryHistory = screenHistory.slice();
+            lastNonGameScreen = entryScreen;
+        }
         // המחלקה מתווספת לפני הטעינה האסינכרונית, כדי שהדפדפן
         // יצר את פריסת מסך המשחק הנכונה כבר בטעינה הראשונה.
         applyScreen('game');
@@ -322,6 +332,9 @@ function showScreen(screenName) {
     if (currentScreen) screenHistory.push(currentScreen);
     if (screenName === 'game') {
         gameEntryHistory = screenHistory.slice();
+        // נשמר גם בזיכרון הקבוע, כדי שאחרי רענון הדף כפתור "חזור"
+        // יחזיר את השחקן לאותו מסך שממנו נכנס למשחק.
+        if (currentScreen) setUserState('game_entry_screen', currentScreen);
     }
     if (screenName !== 'game' && currentScreen !== 'game') lastNonGameScreen = screenName;
     applyScreen(screenName);

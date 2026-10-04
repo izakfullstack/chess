@@ -808,7 +808,7 @@ input[readonly] {
 .material-scale {
     /* ממוקמת באופן מוחלט בקצה השמאלי, בלי להשפיע על מיקום הלוח */
     position: absolute;
-    left: -6rem;
+    left: -7.75rem;
     top: 1.5rem;
     width: 9rem;
     min-width: 0;
@@ -925,7 +925,7 @@ input[readonly] {
 
 .material-scale {
     position: absolute;
-    left: -6rem;
+    left: -7.75rem;
     top: 1.5rem;
     width: 9rem;
     grid-column: auto;
@@ -3471,7 +3471,7 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
     direction: ltr;
     text-align: left;
     white-space: nowrap;
-    margin-left: -1.75rem;
+    margin-left: -3.25rem;
     transform: translateY(-0.9rem);
 }
 
@@ -3487,6 +3487,7 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
     flex: 0 0 auto;
     /* מרחק אוטומטי משמאל דוחק את הסטטוס לקצה הימני של המסך */
     margin-left: auto;
+    margin-right: -2.5rem;
 }
 
 @media (max-width: 640px) {
