@@ -339,9 +339,13 @@ body.no-screen-animation .screen.active {
     animation: none;
 }
 
+/* אנימציית מעבר בין מסכים.
+   שימוש ב-opacity בלבד (בלי transform) מכוון ש-transform על אלמנט
+   הופך אותו ל-containing block של צאצאי position:fixed,
+   ואז הכותרת והסטטוס מתמקמים מול אזור התוכן במקום מול החלון. */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* Hero section */
@@ -3497,11 +3501,16 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
 
 /* מיקום נוח לכותרת המשחק ולסטטוס במסך המשחק */
 .game-heading {
-    /* פריסה לכל רוחב המסך כדי שהכותרת והסטטוס ייצמדו לקצותיו */
-    width: 100vw;
+    /* ממוקם קבוע לפי החלון עצמו, כך שהכותרת והסטטוס נצמדים
+       לקצות המסך תמיד, בכל רוחב ובכל גלילה. */
+    position: fixed;
+    top: 4.6rem;
+    left: 0;
+    right: 0;
+    width: auto;
     box-sizing: border-box;
-    /* רווח טיפוגרפי בלבד מהקצה של המסך */
-    padding: 0 1.5rem;
+    /* רווח טיפוגרפי בלבד: דיווח משמאל, מעט יותר מימין */
+    padding: 0 0.6rem 0 1.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3509,8 +3518,13 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
     direction: ltr;
     text-align: left;
     white-space: nowrap;
-    margin-left: calc(50% - 50vw);
-    transform: translateY(-0.9rem);
+    pointer-events: none;
+    z-index: var(--z-sticky);
+}
+
+.game-heading #game-title,
+.game-heading #game-status {
+    pointer-events: auto;
 }
 
 .game-heading #game-title {
@@ -3530,11 +3544,9 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
 
 @media (max-width: 640px) {
     .game-heading {
-        width: 100vw;
-        max-width: 100vw;
-        padding: 0 0.75rem;
+        top: 4.1rem;
+        padding: 0 0.35rem 0 0.75rem;
         gap: 0.55rem;
-        transform: translateY(-0.5rem);
     }
 
     .game-heading #game-title {

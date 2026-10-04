@@ -1599,10 +1599,18 @@ function setupBoardControls() {
 }
 /**
  * כיוון הלוח.
- * הלוח תמיד מוצג באותו כיוון קבוע: כלים לבנים למטה וכלים שחורים למעלה,
- * בלי תלות בצבע השחקן. כך כל השחקנים רואים את אותו לוח בכל רגע.
+ * כמו בכל אפליקציית שחמט, כל שחקן רואה את הכלים שלו בתחתית הלוח:
+ * הלבן רואה לבן למטה, והשחור רואה שחור למטה (הלוח מהפוך עבורו).
  */
 function shouldFlipBoard() {
+    if (!currentGame || !auth.currentUser) return false;
+    const account = String(auth.currentUser.accountNumber);
+    if (account === String(currentGame.player1Account)) {
+        return currentGame.player1Color === 'black';
+    }
+    if (account === String(currentGame.player2Account)) {
+        return currentGame.player2Color === 'black';
+    }
     return false;
 }
 
@@ -1722,13 +1730,13 @@ function renderChessBoard(fen, currentTurn) {
     boardElement.innerHTML = '';
 
     const board = game.fenToBoard(fen);
-    // כיוון קבוע וללא היפוך: שורה 0 (שחורים) למעלה, שורה 7 (לבנים) למטה.
-    // renderChessBoard אינו משתמש בצבע השחקן כלל, ולכן כל אחד רואה את אותו לוח.
+    // הלוח מתהפך עבור השחקן השחור, כך שכל שחקן רואה את הכלים שלו בתחתית הלוח.
+    const flipped = shouldFlipBoard();
 
     for (let displayRow = 0; displayRow < 8; displayRow++) {
         for (let displayCol = 0; displayCol < 8; displayCol++) {
-            const row = displayRow;
-            const col = displayCol;
+            const row = flipped ? 7 - displayRow : displayRow;
+            const col = flipped ? 7 - displayCol : displayCol;
             const square = document.createElement('div');
             const piece = board[row][col];
             const legalMoves = currentGame?.legalMoves || [];
