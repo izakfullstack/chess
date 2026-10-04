@@ -44,6 +44,8 @@ let gamePollTimer = null;
 let sentInvitePollTimer = null;
 let sentInvitePollInitialized = false;
 let handledAcceptedInvites = new Set();
+// חותך מועד שבו הדף נטען. הזמנות שאושרו לפני החותך נחשבות לישנות ולא יפתחו משחק אוטומטית.
+const PAGE_LOADED_AT = Date.now();
 let opponentResignationNoticeShown = false;
 let accountSettingsMessageTimer = null;
 let accountSettingsDirty = false;
@@ -177,6 +179,15 @@ function initApp() {
 
     // מעקב בזמן אמת אחר אישור הזמנות ששלח המשתמש (פתיחת המשחק אצל המזמין)
     startSentInvitePolling();
+
+    // מעקב אחר הזמנות שהתקבלו (פתיחת דיאלוג ההזמנה אצל הנמען).
+    // מופעל מכאן ולא רק ממסך "שחקנים", כדי שההזמנה תגיע גם אם השחקן
+    // נמצא במסך אחר (בית, לוח בקרה וכו').
+    startInvitationPolling();
+
+    // טעינה ראשונית: ההזמנות שכבר קיימות נרשמות כמותירות כדי שלא
+    // ייפתחו חלונות דיאלוג מיידיים על הזמנות ישנות שהשחקן כבר ראה.
+    loadIncomingInvitations(false);
 
     // בדיקת פרמטרים בכתובת לגישה ישירה למשחק
     const urlParams = new URLSearchParams(window.location.search);
@@ -584,33 +595,43 @@ function startSentInvitePolling() {
             .then(invitations => {
                 if (!Array.isArray(invitations)) return;
 
-                if (!sentInvitePollInitialized) {
-                    // סבב ראשון: מסמנים אישורים קיימים כ"כבר טופלו" כדי לא לפתוח משחקים ישנים
-                    invitations.forEach(invitation => {
-                        if (invitation.status === 'accepted') handledAcceptedInvites.add(String(invitation.id));
-                    });
-                    sentInvitePollInitialized = true;
-                    return;
-                }
-
                 for (const invitation of invitations) {
                     if (invitation.status !== 'accepted' || !invitation.gameId) continue;
                     const key = String(invitation.id);
                     if (handledAcceptedInvites.has(key)) continue;
-                    handledAcceptedInvites.add(key);
 
+                    // הזמנה שאושרה לפני שהדף נטען (בסבב הראשון) נחשבת לישנה:
+                    // השחקן ראה אותה כבר לפני הרענון, ולכן לא נפתח עבורה משחק.
+                    if (!sentInvitePollInitialized) {
+                        const respondedAt = Date.parse(invitation.respondedAt || '');
+                        if (!Number.isNaN(respondedAt) && respondedAt <= PAGE_LOADED_AT) {
+                            handledAcceptedInvites.add(key);
+                            continue;
+                        }
+                    }
+
+                    // אם כבר נמצא משחק פעיל אחר, לא נבלוג את ההזמנה - היא תישאר
+                    // ממתינה ותיפתח בסבב הבא שבו המשחק הקודם יסתיים.
                     const inActiveGame = currentScreen === 'game'
                         && currentGame && currentGame.status === 'active' && !historicalGameView;
-                    if (!inActiveGame) {
-                        // האישור התקבל — נפתח את לוח המשחק גם אצל המזמין
-                        showScreen('game');
-                        loadGame(invitation.gameId);
-                    }
-                    break; // משחק אחד לכל סבב
+                    if (inActiveGame) continue;
+
+                    // האישור התקבל - נפתח את לוח המשחק גם אצל המזמין.
+    // showScreen עשויה להיחסם בדיאלוג אישור יציאה; אם כך קורה ההזמנה
+    // נשארת לסבב הבא כדי שלא תיבלע לעולם.
+    if (currentScreen !== 'game') {
+        showScreen('game');
+    }
+    if (currentScreen === 'game') {
+        handledAcceptedInvites.add(key);
+        loadGame(invitation.gameId);
+    }
+    break; // משחק אחד לכל סבב
                 }
             })
             .catch(() => { /* מעקב שקט */ });
     }, 4000);
+    sentInvitePollInitialized = true;
 }
 
 function setupAdminEvents() {
@@ -999,10 +1020,19 @@ function toggleAdminUserHistory(userId) {
     });
 }
 
+/**
+ * מעקב אחר הזמנות נכנסות. פועל תמיד (לא רק במסך "שחקנים"), כדי שהשחקן
+ * יקבל הזמנה גם אם הוא נמצא במסך אחר - ולא רק כשהוא יושב ברשימת השחקנים.
+ */
 function startInvitationPolling() {
     if (invitationPollingTimer) return;
     invitationPollingTimer = setInterval(() => {
-        if (currentScreen === 'games' && auth.currentUser) loadIncomingInvitations(true);
+        if (!auth.currentUser) return;
+        // אם השחקן כבר במשחק פעיל, לא נפתחים לו חלונות הזמנה מתנגשים.
+        const inActiveGame = currentScreen === 'game'
+            && currentGame && currentGame.status === 'active' && !historicalGameView;
+        if (inActiveGame) return;
+        loadIncomingInvitations(true);
     }, 5000);
 }
 
@@ -1084,20 +1114,26 @@ function loadIncomingInvitations(openNewDialog = false) {
     if (!auth.currentUser) return;
     fetch(`/api/games/matchmaking/invitations?accountNumber=${encodeURIComponent(auth.currentUser.accountNumber)}`)
         .then(response => response.json()).then(invitations => {
+            if (!Array.isArray(invitations)) return;
+
+            // הרשימה מתעדכנת רק אם היא קיימת ב-DOM, אבל זיהוי ההזמנה החדשה
+            // חייב להתרחש בכל מקרה - גם כשהשחקן אינו במסך "שחקנים".
             const list = document.getElementById('incoming-invitations');
-            if (!list) return;
-            list.innerHTML = invitations.length ? invitations.map(invitation => `
-                <button class="invitation-card" type="button" onclick="openInvitationDialog(${invitation.id}, '${invitation.senderAccount}')">
-                    קיבלת הזמנה למשחק מחשבון ${invitation.senderAccount}
-                </button>
-            `).join('') : '';
+            if (list) {
+                list.innerHTML = invitations.length ? invitations.map(invitation => `
+                    <button class="invitation-card" type="button" onclick="openInvitationDialog(${invitation.id}, '${invitation.senderAccount}')">
+                        קיבלת הזמנה למשחק מחשבון ${invitation.senderAccount}
+                    </button>
+                `).join('') : '';
+            }
 
             const newInvitation = invitations.find(invitation => !knownInvitationIds.has(invitation.id));
             if (openNewDialog && newInvitation) {
                 openInvitationDialog(newInvitation.id, newInvitation.senderAccount);
             }
             knownInvitationIds = new Set(invitations.map(invitation => invitation.id));
-        });
+        })
+        .catch(() => { /* מעקב שקט */ });
 }
 
 window.openInvitationDialog = function(invitationId, senderAccount) {
