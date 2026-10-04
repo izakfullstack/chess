@@ -1747,6 +1747,16 @@ body.admin-profile-open {
 /* Footer */
 /* AI/ML rating colors for display */
 .rating-excellent { color: var(--rating-excellent); }
+
+/* Homepage scene */
+.home-stage {
+    position: relative;
+    min-height: 72vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0 1.5rem;
+}
 .rating-good { color: var(--rating-good); }
 .rating-average { color: var(--rating-average); }
 .rating-poor { color: var(--rating-poor); }
@@ -1831,7 +1841,11 @@ body.admin-profile-open {
     }
 
     .mobile-menu .btn,
-    .mobile-menu .players-button,
+    .mobile-menu .players-button {
+        width: 100%;
+        min-height: 2.5rem;
+    }
+
     .home-stage {
         min-height: clamp(30rem, 72vh, 42rem);
     }
