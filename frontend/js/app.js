@@ -1598,13 +1598,8 @@ function setupBoardControls() {
     window.addEventListener('blur', stop);
 }
 function shouldFlipBoard() {
-    if (!currentGame || !auth.currentUser) return false;
-    if (String(auth.currentUser.accountNumber) === String(currentGame.player1Account)) {
-        return currentGame.player1Color === 'black';
-    }
-    if (String(auth.currentUser.accountNumber) === String(currentGame.player2Account)) {
-        return currentGame.player2Color === 'black';
-    }
+    // הלוח תמיד מוצג באותו כיוון: כלים לבנים למטה ושחורים למעלה,
+    // בלי תלות בצבע השחקן. כך המשחק תמיד מתחיל באותו מראה.
     return false;
 }
 

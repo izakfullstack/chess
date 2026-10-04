@@ -1439,12 +1439,44 @@ body.game-screen-active #center-board-global {
 
 .history-list {
     display: grid;
-    gap: var(--spacing-sm);
+    gap: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+/* תיבות בסגנון תיבת דואר: משבצות נצמדות עם קו מפריד דק ביניהן */
+.history-game-card {
+    display: grid;
+    gap: 0.25rem;
+    width: 100%;
+    margin-bottom: 0;
+    padding: 0.7rem 0.8rem;
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: right;
+    font: inherit;
+    transition: background-color 0.15s ease;
+}
+
+/* המשבצת הראשונה ללא קו מפריד מעל */
+.history-list .history-game-card:first-child {
+    border-top: 0;
+}
+
+.history-game-card:hover,
+.history-game-card:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .history-game-card {
     color: var(--text-primary);
-    background: var(--surface);
+    background: transparent;
 }
 
 .history-game-card span {
