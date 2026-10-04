@@ -796,101 +796,119 @@ input[readonly] {
     width: min(100%, calc(42rem + 8rem));
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 4rem minmax(0, 42rem) 4rem;
+    grid-template-columns: 4.5rem minmax(0, 42rem);
     align-items: stretch;
     justify-content: center;
     direction: ltr;
 }
 
-.captured-tray {
+/* ===== משוואת כלים שנאכלו =====
+   עמודה אחת בצד שמאל של הלוח. בכל שורה זוג: כלי היריב (שמאל) מול כלי השחקן (ימין).
+   הכלים היקרים ממוקמים למעלה והזולים למטה. */
+.material-scale {
     min-width: 0;
     align-self: stretch;
     display: flex;
-    align-content: flex-start;
-    align-items: flex-start;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.3rem;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 0.15rem;
     padding: 0.65rem 0.3rem;
     direction: ltr;
 }
 
-.captured-tray:empty {
+.material-scale:empty {
     padding: 0;
 }
 
-.captured-piece {
-    width: 2.15rem;
-    height: 2.65rem;
-    flex: 0 0 auto;
+/* שורת זוג - כלי היריב לימין וכלי השחקן לשמאל מבחינת המסך */
+.material-row {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.1rem;
+    padding: 0.1rem 0.15rem;
+    border-radius: 8px;
+    background: rgba(9, 22, 38, 0.55);
+    border: 1px solid rgba(203, 213, 225, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    min-height: 2.15rem;
+}
+
+/* הכלים היקרים יותר מקבלים מסגרת ורקע מודגשים יותר */
+.material-row[data-weight='5'] {
+    background: linear-gradient(180deg, rgba(88, 28, 28, 0.65), rgba(9, 22, 38, 0.6));
+    border-color: rgba(248, 181, 173, 0.45);
+}
+
+.material-row[data-weight='4'] {
+    background: linear-gradient(180deg, rgba(67, 40, 24, 0.6), rgba(9, 22, 38, 0.6));
+    border-color: rgba(253, 224, 71, 0.32);
+}
+
+.material-row[data-weight='3'] {
+    border-color: rgba(203, 213, 225, 0.2);
+}
+
+.material-row[data-weight='1'] {
+    opacity: 0.88;
+}
+
+.material-slot {
+    display: flex;
+    align-items: center;
     justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
     color: #63402d;
     filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
     pointer-events: none;
 }
 
-.captured-piece.white {
+.material-slot.white {
     color: #ffffff;
     filter: drop-shadow(0 0 1px rgba(36, 20, 13, 1)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.55));
 }
 
-.captured-piece .piece-svg {
+.material-slot:empty {
+    visibility: hidden;
+}
+
+.material-slot .piece-svg {
     width: 100%;
     height: 100%;
     display: block;
 }
 
-.captured-piece .piece-fill,
-.captured-piece .piece-base,
-.captured-piece .piece-stem {
+.material-slot .piece-fill,
+.material-slot .piece-base,
+.material-slot .piece-stem {
     fill: currentColor;
     stroke: currentColor;
     stroke-width: 1.5;
     stroke-linejoin: round;
 }
 
-.captured-piece .piece-detail {
+.material-slot .piece-detail {
     fill: none;
     stroke: rgba(255, 255, 255, 0.82);
     stroke-width: 4;
     stroke-linecap: round;
 }
 
-.captured-piece .piece-detail-dot {
+.material-slot .piece-detail-dot {
     fill: rgba(255, 255, 255, 0.92);
     stroke: rgba(36, 20, 13, 0.9);
     stroke-width: 1.5;
 }
 
-.board-with-captures.viewer-white .captured-by-black {
-    grid-column: 1;
-    grid-row: 1;
-}
-
-.board-with-captures.viewer-white .chess-board-stage {
+.board-with-captures .chess-board-stage {
     grid-column: 2;
     grid-row: 1;
 }
 
-.board-with-captures.viewer-white .captured-by-white {
-    grid-column: 3;
-    grid-row: 1;
-}
-
-.board-with-captures.viewer-black .captured-by-white {
+.material-scale {
     grid-column: 1;
-    grid-row: 1;
-}
-
-.board-with-captures.viewer-black .chess-board-stage {
-    grid-column: 2;
-    grid-row: 1;
-}
-
-.board-with-captures.viewer-black .captured-by-black {
-    grid-column: 3;
     grid-row: 1;
 }
 
@@ -3261,7 +3279,7 @@ body:has(#screen-game.active) {
 @media (max-width: 768px) {
     .board-with-captures {
         width: 100%;
-        grid-template-columns: 2.25rem minmax(0, 32rem) 2.25rem;
+        grid-template-columns: 2.5rem minmax(0, 32rem);
         justify-items: stretch;
     }
 
@@ -3290,17 +3308,23 @@ body:has(#screen-game.active) {
 
     .board-with-captures {
         width: 100%;
-        grid-template-columns: 2.25rem minmax(0, 32rem) 2.25rem;
+        grid-template-columns: 2.5rem minmax(0, 32rem);
     }
 
-    .captured-tray {
-        gap: 0.15rem;
+    .material-scale {
+        gap: 0.1rem;
         padding-inline: 0.1rem;
     }
 
-    .captured-piece {
-        width: 1.35rem;
-        height: 1.75rem;
+    .material-row {
+        gap: 0.05rem;
+        padding: 0.05rem 0.1rem;
+        min-height: 1.5rem;
+    }
+
+    .material-slot {
+        width: 1.3rem;
+        height: 1.3rem;
     }
 
     .game-loading {

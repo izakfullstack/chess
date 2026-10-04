@@ -1647,21 +1647,51 @@ function getCapturedPiecesByPlayer() {
 function renderCapturedPieces() {
     const captured = getCapturedPiecesByPlayer();
     const viewerColor = getCurrentPlayerColor();
-    const trays = {
-        white: document.getElementById('captured-by-white'),
-        black: document.getElementById('captured-by-black')
-    };
+    const scale = document.getElementById('material-scale');
+    if (!scale) return;
 
-    Object.entries(trays).forEach(([color, tray]) => {
-        if (!tray) return;
-        tray.innerHTML = '';
-        captured[color].forEach(piece => {
-            const capturedPiece = document.createElement('div');
-            capturedPiece.className = `captured-piece ${piece.color}`;
-            capturedPiece.innerHTML = getPieceSvg(piece.type);
-            capturedPiece.setAttribute('aria-label', `${piece.color === 'white' ? 'כלי לבן' : 'כלי שחור'} ${getPieceTypeName(piece.type)} שנאכל`);
-            tray.appendChild(capturedPiece);
+    const opponentColor = viewerColor === 'white' ? 'black' : 'white';
+
+    // ספירת כלי היריב שנאכלו מול כלי השחקן שנאכלו, לפי סוג כלי
+    const PIECE_WEIGHT = { queen: 5, rook: 4, bishop: 3, knight: 3, pawn: 1 };
+    const countByType = { opponent: {}, viewer: {} };
+
+    captured[opponentColor].forEach(piece => {
+        countByType.opponent[piece.type] = (countByType.opponent[piece.type] || 0) + 1;
+    });
+    captured[viewerColor].forEach(piece => {
+        countByType.viewer[piece.type] = (countByType.viewer[piece.type] || 0) + 1;
+    });
+
+    // סדר עולה לפי ערך הכלי: המלכה למעלה, הרגליים למטה
+    const order = Object.keys(PIECE_WEIGHT)
+        .sort((a, b) => PIECE_WEIGHT[b] - PIECE_WEIGHT[a]);
+
+    scale.innerHTML = '';
+
+    order.forEach(type => {
+        const enemyCount = countByType.opponent[type] || 0;
+        const ownCount = countByType.viewer[type] || 0;
+        if (!enemyCount && !ownCount) return;
+
+        const row = document.createElement('div');
+        row.className = 'material-row';
+        row.dataset.weight = String(PIECE_WEIGHT[type]);
+        row.setAttribute('aria-label', `${getPieceTypeName(type)}: ${enemyCount} אצל היריב, ${ownCount} אצל השחקן`);
+
+        // משבצת השחקן ימנית במסך, משבצת היריב לשמאלה - צמודות כמו במשוואה
+        [viewerColor, opponentColor].forEach(color => {
+            const count = color === viewerColor ? ownCount : enemyCount;
+            const slot = document.createElement('span');
+            slot.className = `material-slot ${color}`;
+            if (count > 0) slot.innerHTML = getPieceSvg(type);
+            slot.setAttribute('aria-label', count > 0
+                ? `${count} ${getPieceTypeName(type)} ${color === 'white' ? 'לבנים' : 'שחורים'}`
+                : 'אין כלים');
+            row.appendChild(slot);
         });
+
+        scale.appendChild(row);
     });
 
     const boardWithCaptures = document.getElementById('board-with-captures');
