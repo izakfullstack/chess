@@ -1597,9 +1597,12 @@ function setupBoardControls() {
     window.addEventListener('pointercancel', stop);
     window.addEventListener('blur', stop);
 }
+/**
+ * כיוון הלוח.
+ * הלוח תמיד מוצג באותו כיוון קבוע: כלים לבנים למטה וכלים שחורים למעלה,
+ * בלי תלות בצבע השחקן. כך כל השחקנים רואים את אותו לוח בכל רגע.
+ */
 function shouldFlipBoard() {
-    // הלוח תמיד מוצג באותו כיוון: כלים לבנים למטה ושחורים למעלה,
-    // בלי תלות בצבע השחקן. כך המשחק תמיד מתחיל באותו מראה.
     return false;
 }
 
@@ -1719,14 +1722,13 @@ function renderChessBoard(fen, currentTurn) {
     boardElement.innerHTML = '';
 
     const board = game.fenToBoard(fen);
-    // הלוח תמיד מוצג בכיוון קבוע: שורה 0 (שחורים) למעלה ושורה 7 (לבנים) למטה.
-    // אין היפוך לפי צבע השחקן, כדי שכל אחד יראה את אותו לוח.
-    const flipped = false;
+    // כיוון קבוע וללא היפוך: שורה 0 (שחורים) למעלה, שורה 7 (לבנים) למטה.
+    // renderChessBoard אינו משתמש בצבע השחקן כלל, ולכן כל אחד רואה את אותו לוח.
 
     for (let displayRow = 0; displayRow < 8; displayRow++) {
         for (let displayCol = 0; displayCol < 8; displayCol++) {
-            const row = flipped ? 7 - displayRow : displayRow;
-            const col = flipped ? 7 - displayCol : displayCol;
+            const row = displayRow;
+            const col = displayCol;
             const square = document.createElement('div');
             const piece = board[row][col];
             const legalMoves = currentGame?.legalMoves || [];
