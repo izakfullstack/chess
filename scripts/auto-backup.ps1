@@ -135,9 +135,10 @@ function Save-Change {
 
 # --- לולאת המעקב ---------------------------------------------------------------
 
-$fingerprint = $null
+# $pendingSince  – מתי התחיל השקט הנוכחי (null = אין שינוי ממתין)
+# $savedPrint   – טביעת האצבע שכבר הדפסנו למשתמש, כדי לא להציף הודעות כפולות
 $pendingSince = $null
-$lastAction = Get-Date
+$announced = $null
 
 Write-Host "Watching for changes. Leave this window open." -ForegroundColor Cyan
 Write-Host ""
@@ -146,33 +147,55 @@ try {
     while ($true) {
         Start-Sleep -Seconds 2
 
-        $newFingerprint = Test-RepoChanged -PreviousFingerprint $fingerprint
+        $current = @(git status --porcelain)
 
-        if ($null -eq $newFingerprint) {
-            # אין שינוי - אפס את הטיימר אם ממתין
+        # --- מצב נקי: אין מה לשמור -------------------------------------------
+        if ($current.Count -eq 0) {
             if ($null -ne $pendingSince) {
+                Write-Host "Nothing left to save - timer cleared." -ForegroundColor DarkGray
                 $pendingSince = $null
-                Write-Host "Changes reverted - backup cancelled." -ForegroundColor DarkYellow
+                $announced = $null
             }
             continue
         }
 
-        # יש שינוי
-        $fingerprint = $newFingerprint
+        # --- טביעת אצבע של המצב הנוכחי ----------------------------------------
+        $parts = foreach ($line in $current) {
+            $path = $line.Substring(3).Trim('"')
+            $full = Join-Path $project $path
+            if (Test-Path $full -PathType Leaf) {
+                "$path=$((Get-Item $full).Length)"
+            } else {
+                "$path=dir"
+            }
+        }
+        $fingerprint = ($parts -join ',')
 
-        if ($null -eq $pendingSince) {
+        # --- שינוי חדש? התחל ספירת זמן שקט מחדש -------------------------------
+        if ($fingerprint -ne $announced) {
+            if ($null -ne $pendingSince) {
+                Write-Host "More changes - waiting $DebounceSeconds seconds again..." -ForegroundColor DarkGray
+            } else {
+                Write-Host "Change detected - saving in $DebounceSeconds seconds..." -ForegroundColor Yellow
+            }
             $pendingSince = Get-Date
-            Write-Host "Change detected - waiting $DebounceSeconds seconds..." -ForegroundColor DarkYellow
+            $announced = $fingerprint
             continue
         }
 
-        # עבר זמן השקט מאז השינוי האחרון?
-        if (((Get-Date) - $pendingSince).TotalSeconds -ge $DebounceSeconds) {
-            $reason = 'edit'
-            if (Save-Change -Reason $reason) {
+        # --- המצב יציב: האם עבר די השקט? --------------------------------------
+        $quiet = ((Get-Date) - $pendingSince).TotalSeconds
+        if ($quiet -ge $DebounceSeconds) {
+            if (Save-Change -Reason 'edit') {
                 $pendingSince = $null
-                $fingerprint = Test-RepoChanged -PreviousFingerprint $null
+                $announced = $null
+            } else {
+                # נכשל - ננסה שוב בסבב הבא
+                $pendingSince = Get-Date
             }
+        } else {
+            $left = [Math]::Ceiling($DebounceSeconds - $quiet)
+            Write-Host "  ...$left second(s) left" -ForegroundColor DarkGray
         }
     }
 } catch {
