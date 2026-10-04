@@ -1719,7 +1719,9 @@ function renderChessBoard(fen, currentTurn) {
     boardElement.innerHTML = '';
 
     const board = game.fenToBoard(fen);
-    const flipped = shouldFlipBoard();
+    // הלוח תמיד מוצג בכיוון קבוע: שורה 0 (שחורים) למעלה ושורה 7 (לבנים) למטה.
+    // אין היפוך לפי צבע השחקן, כדי שכל אחד יראה את אותו לוח.
+    const flipped = false;
 
     for (let displayRow = 0; displayRow < 8; displayRow++) {
         for (let displayCol = 0; displayCol < 8; displayCol++) {
