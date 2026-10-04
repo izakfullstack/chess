@@ -808,8 +808,8 @@ input[readonly] {
 .material-scale {
     /* ממוקמת באופן מוחלט בקצה השמאלי, בלי להשפיע על מיקום הלוח */
     position: absolute;
-    left: 0;
-    top: 0;
+    left: -1.5rem;
+    top: 1.5rem;
     width: 4.5rem;
     min-width: 0;
     display: flex;
@@ -825,7 +825,8 @@ input[readonly] {
     padding: 0;
 }
 
-/* שורת זוג - כלי היריב לימין וכלי השחקן לשמאל מבחינת המסך */
+/* שורת זוג - כלי היריב לימין וכלי השחקן לשמאל מבחינת המסך.
+   ללא רקע וללא מסגרת - רק הכלים עצמם. */
 .material-row {
     display: flex;
     align-items: center;
@@ -833,25 +834,28 @@ input[readonly] {
     gap: 0.1rem;
     padding: 0.1rem 0.15rem;
     border-radius: 8px;
-    background: rgba(9, 22, 38, 0.55);
-    border: 1px solid rgba(203, 213, 225, 0.12);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    background: none;
+    border: none;
+    box-shadow: none;
     min-height: 2.15rem;
 }
 
-/* הכלים היקרים יותר מקבלים מסגרת ורקע מודגשים יותר */
+/* הכלים היקרים יותר מקבלים מודגשות קלה בלבד (בלי רקע) */
 .material-row[data-weight='5'] {
-    background: linear-gradient(180deg, rgba(88, 28, 28, 0.65), rgba(9, 22, 38, 0.6));
-    border-color: rgba(248, 181, 173, 0.45);
+    background: none;
+    border: none;
+    filter: drop-shadow(0 0 4px rgba(248, 113, 113, 0.55));
 }
 
 .material-row[data-weight='4'] {
-    background: linear-gradient(180deg, rgba(67, 40, 24, 0.6), rgba(9, 22, 38, 0.6));
-    border-color: rgba(253, 224, 71, 0.32);
+    background: none;
+    border: none;
+    filter: drop-shadow(0 0 3px rgba(253, 224, 71, 0.4));
 }
 
 .material-row[data-weight='3'] {
-    border-color: rgba(203, 213, 225, 0.2);
+    background: none;
+    border: none;
 }
 
 .material-row[data-weight='1'] {
@@ -913,8 +917,8 @@ input[readonly] {
 
 .material-scale {
     position: absolute;
-    left: 0;
-    top: 0;
+    left: -1.5rem;
+    top: 1.5rem;
     width: 4.5rem;
     grid-column: auto;
     grid-row: auto;
@@ -3520,6 +3524,8 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
     direction: ltr;
     text-align: left;
     white-space: nowrap;
+    margin-left: -1.75rem;
+    transform: translateY(-0.9rem);
 }
 
 .game-heading #game-title {
