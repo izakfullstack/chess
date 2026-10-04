@@ -50,7 +50,7 @@ let accountSettingsDirty = false;
 const BOARD_DEFAULT_PAN_Y = '-3rem';
 const BOARD_DEFAULT_TILT = '30deg';
 const BOARD_DEFAULT_TOP_OFFSET = '-4rem';
-const BOARD_MAX_TILT = 38;
+const BOARD_MAX_TILT = 50;
 
 const VALID_SCREENS = new Set([
     'home', 'auth', 'games', 'dashboard', 'account-settings', 'game',
