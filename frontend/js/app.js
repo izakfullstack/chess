@@ -272,11 +272,6 @@ function setupGlobalEvents() {
     if (showFullNameToggle) showFullNameToggle.addEventListener('change', markAccountSettingsDirty);
     document.getElementById('save-account-settings')?.addEventListener('click', saveAccountSettings);
 
-    // כפתור רענון משחקים
-    const refreshGames = document.getElementById('refresh-games');
-    if (refreshGames) {
-        refreshGames.addEventListener('click', loadGames);
-    }
 
     const refreshPlayers = document.getElementById('refresh-players');
     if (refreshPlayers) refreshPlayers.addEventListener('click', loadMatchmakingPlayers);
@@ -563,13 +558,27 @@ function startGamePolling(gameId) {
             .then(latest => {
                 if (currentScreen !== 'game') return;
                 const previous = currentGame;
-                const changed = !previous
+                const movesChanged = !previous
                     || String(previous.id) !== String(latest.id)
-                    || (previous.moveHistory?.length || 0) !== (latest.moveHistory?.length || 0)
-                    || previous.status !== latest.status;
-                if (changed) {
+                    || (previous.moveHistory?.length || 0) !== (latest.moveHistory?.length || 0);
+                const statusChanged = !previous || previous.status !== latest.status;
+
+                if (movesChanged) {
+                    // שינוי בלוח או במהלכים - נדרשת רינדור מחדש מלאה
                     loadGame(latest.id, historicalGameView, true);
+                } else if (statusChanged) {
+                    // שינוי סטטוס בלבד (למשל היריב כנע) - מעדכנים רק את הכותרת,
+                    // בלי לטעון את המשחק מחדש ולאפס את המעקב.
+                    currentGame = { ...currentGame, ...latest };
+                    const gameStatus = document.getElementById('game-status');
+                    if (gameStatus) {
+                        gameStatus.textContent = `סטטוס: ${getStatusText(latest.status)}`;
+                        gameStatus.className = `game-status status-${latest.status}`;
+                        gameStatus.style.display = !historicalGameView && latest.status === 'active' ? 'inline-block' : 'none';
+                    }
+                    if (latest.status !== 'active') stopGamePolling();
                 }
+
                 if (previous?.status === 'active' && latest.status === 'completed'
                     && latest.winnerId != null && String(latest.winnerId) === String(auth.currentUser?.id)
                     && !opponentResignationNoticeShown) {
@@ -1344,40 +1353,6 @@ function loadMyGames() {
 }
 
 /**
- * טעינת כל המשחקים למסך המשחקים
- */
-function loadGames() {
-    if (!auth.currentUser) return;
-    fetch('/api/games')
-    .then(response => response.json())
-    .then(games => {
-        const gamesList = document.getElementById('all-games-list');
-        if (!gamesList) return;
-
-        gamesList.innerHTML = games.map(game => {
-            const isPlayer = game.player1_id === auth.currentUser.id || game.player2_id === auth.currentUser.id;
-            const opponentNumber = game.player1_id === auth.currentUser.id ? game.player2_number : game.player1_number;
-
-            return `
-                <div class="game-card ${isPlayer ? 'selected' : ''}" onclick="selectGame(${game.id})">
-                    <div class="game-header">
-                        <span>משחק #${game.id}</span>
-                        <span class="game-status status-${game.status}">${getStatusText(game.status)}</span>
-                    </div>
-                    <p>שחקן 1: חשבון ${game.player1_number}</p>
-                    <p>שחקן 2: חשבון ${game.player2_number}</p>
-                    <p>נוצר: ${new Date(game.created_at).toLocaleDateString()}</p>
-                    ${game.status === 'completed' ? `<p>מנצח: חשבון ${game.winner_id === game.player1_id ? game.player1_number : game.player2_number}</p>` : ''}
-                </div>
-            `;
-        }).join('');
-    })
-    .catch(error => {
-        console.error('שגיאה בטעינת משחקים:', error);
-    });
-}
-
-/**
  * קבלת טקסט סטטוס בעברית
  */
 function getStatusText(status) {
@@ -1389,19 +1364,6 @@ function getStatusText(status) {
     }
 }
 
-/**
- * בחירת משחק לצפייה
- */
-function selectGame(gameId) {
-    historicalGameView = false;
-    showScreen('game');
-    loadGame(gameId);
-}
-
-/**
- * טעינת משחק ספציפי.
- * silent=true לרענון שקט בזמן אמת (ללא מסך טעינה)
- */
 function loadGame(gameId, historical = false, silent = false) {
     historicalGameView = historical;
     if (!silent) {
@@ -1984,6 +1946,8 @@ function updateMoveHistory(moveHistory) {
     const moveHistoryElement = document.getElementById('move-history');
     if (!moveHistoryElement) return;
 
+    // הרשימה נחשפת רק כשיש מהלכים להציג, כדי לא להשאיר ריק מיותר
+    moveHistoryElement.hidden = !moveHistory.length;
     moveHistoryElement.innerHTML = moveHistory.map(move => {
         return `
             <div class="move-history-item">

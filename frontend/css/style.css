@@ -927,14 +927,6 @@ input[readonly] {
     grid-row: 1;
 }
 
-.material-scale {
-    position: absolute;
-    left: -7.75rem;
-    top: 1.5rem;
-    width: 9rem;
-    grid-column: auto;
-    grid-row: auto;
-}
 
 .board-with-captures .chess-board-stage {
     top: 0 !important;

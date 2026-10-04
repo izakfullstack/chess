@@ -121,6 +121,10 @@ async function initializeTables() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_moves_game_id ON moves(game_id, move_number)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_invitations_receiver_status ON game_invitations(receiver_id, status)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics_events(created_at)');
+    // מעקב אחר הזמנות שנשלחו מתבצע כל כמה שניות - הוא מסנן לפי השולח
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_invitations_sender ON game_invitations(sender_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_games_players ON games(player1_id, player2_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)');
     console.log('PostgreSQL tables ready');
 }
 

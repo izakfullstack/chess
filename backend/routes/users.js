@@ -243,8 +243,9 @@ router.post('/register', async (req, res) => {
                         console.error('Email delivery failed:', mailError.message);
                     }
                 } else {
-                    console.log(`Verification URL for ${email}: ${verificationUrl}`);
-                    console.log(`Account number for ${email}: ${accountNumber}`);
+                    // SMTP אינו שלוח — מספר החשבון נשמר במסד ונשלח בהודעת האימות הבאה.
+                    // הקישור עצמו אינו מודפס: הוא נושא את הטוקן, והדפסתו ליוג חושפת גישה לחשבון.
+                    console.warn(`שלוח היישר לא הצליח עכשיו (${email}). יש לוודא שהגדרות SMTP תקינות.`);
                 }
 
                 res.status(201).json({
