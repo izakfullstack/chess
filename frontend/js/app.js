@@ -297,6 +297,7 @@ function setupGlobalEvents() {
     });
     document.getElementById('opponent-resignation-leave')?.addEventListener('click', () => {
         document.getElementById('opponent-resignation-dialog')?.classList.add('hidden');
+        opponentResignationNoticeShown = false;
         goBack();
     });
 
@@ -352,7 +353,17 @@ function showScreen(screenName) {
 }
 
 function goBack(fallback = lastNonGameScreen || 'home') {
-    const previousScreen = getPreviousScreen(fallback);
+    // אם יצאנו ממשחק וההיסטוריה בזיכרון ריקה (למשל אחרי רענון, או כשהמשחק
+    // נפתח אוטומטית ממעקב הזמנות) - משתמשים במסך המקור שנשמר בזיכרון הקבוע,
+    // כדי שכפתור "חזור" לא יקפוץ בטעות לדף הראשי.
+    let previousScreen = getPreviousScreen(fallback);
+    if (previousScreen === 'home' && currentScreen === 'game') {
+        const entryKey = getUserStateKey('game_entry_screen');
+        const entryScreen = entryKey ? localStorage.getItem(entryKey) : null;
+        if (entryScreen && VALID_SCREENS.has(entryScreen) && entryScreen !== 'game') {
+            previousScreen = entryScreen;
+        }
+    }
     if (shouldWarnBeforeLeavingGame(previousScreen)) {
         pendingLeaveScreen = previousScreen;
         leaveConfirmationInProgress = false;
