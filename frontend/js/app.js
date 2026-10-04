@@ -584,7 +584,11 @@ function stopGamePolling() {
 }
 
 /**
- * מעקב אחר הזמנות ששלח המשתמש — ברגע אישור, לוח המשחק נפתח גם אצל המזמין
+ * מעקב אחר הזמנות ששלח המשתמש — ברגע אישור, לוח המשחק נפתח גם אצל המזמין.
+ *
+ * חשוב: מגיבים רק על אישורים שקרו *בזמן שהדף הזה פתוח*. היסטוריית הזמנות
+ * שאושרו בעבר (בסבבים קודמים של המעקב) כבר נצפתה אז, ופתיחתה שוב
+ * הייתה מקפיצה את השחקן למשחק ישן כל כמה שניות.
  */
 function startSentInvitePolling() {
     if (sentInvitePollTimer) return;
@@ -594,44 +598,41 @@ function startSentInvitePolling() {
             .then(response => response.json())
             .then(invitations => {
                 if (!Array.isArray(invitations)) return;
+                // מסמנים שראינו את כל ההיסטוריה, כדי שהיא לא תיפתח שוב
+                sentInvitePollInitialized = true;
 
-                for (const invitation of invitations) {
-                    if (invitation.status !== 'accepted' || !invitation.gameId) continue;
-                    const key = String(invitation.id);
-                    if (handledAcceptedInvites.has(key)) continue;
+                // רק ההזמנה שאושרה אחרי שהדף נטען רלוונטית כאן.
+                // ההזמנות ישנות (respondedAt <= PAGE_LOADED_AT) כבר נפתחו או שהתעלמנו מהן.
+                const freshAccepted = invitations.filter(invitation => {
+                    if (invitation.status !== 'accepted' || !invitation.gameId) return false;
+                    if (handledAcceptedInvites.has(String(invitation.id))) return false;
+                    const respondedAt = Date.parse(invitation.respondedAt || '');
+                    return !Number.isNaN(respondedAt) && respondedAt > PAGE_LOADED_AT;
+                });
 
-                    // הזמנה שאושרה לפני שהדף נטען (בסבב הראשון) נחשבת לישנה:
-                    // השחקן ראה אותה כבר לפני הרענון, ולכן לא נפתח עבורה משחק.
-                    if (!sentInvitePollInitialized) {
-                        const respondedAt = Date.parse(invitation.respondedAt || '');
-                        if (!Number.isNaN(respondedAt) && respondedAt <= PAGE_LOADED_AT) {
-                            handledAcceptedInvites.add(key);
-                            continue;
-                        }
-                    }
+                if (freshAccepted.length === 0) return;
 
-                    // אם כבר נמצא משחק פעיל אחר, לא נבלוג את ההזמנה - היא תישאר
-                    // ממתינה ותיפתח בסבב הבא שבו המשחק הקודם יסתיים.
-                    const inActiveGame = currentScreen === 'game'
-                        && currentGame && currentGame.status === 'active' && !historicalGameView;
-                    if (inActiveGame) continue;
+                // אם כבר נמצא משחק פעיל, לא נבלוג הזמנות - הן יישארו לסבב הבא.
+                const inActiveGame = currentScreen === 'game'
+                    && currentGame && currentGame.status === 'active' && !historicalGameView;
+                if (inActiveGame) return;
 
-                    // האישור התקבל - נפתח את לוח המשחק גם אצל המזמין.
-    // showScreen עשויה להיחסם בדיאלוג אישור יציאה; אם כך קורה ההזמנה
-    // נשארת לסבב הבא כדי שלא תיבלע לעולם.
-    if (currentScreen !== 'game') {
-        showScreen('game');
-    }
-    if (currentScreen === 'game') {
-        handledAcceptedInvites.add(key);
-        loadGame(invitation.gameId);
-    }
-    break; // משחק אחד לכל סבב
+                // רק ההזמנה האחרונה - כך לא נפתחים משחקים ישנים בזה אחר זה.
+                const invitation = freshAccepted[0];
+                const key = String(invitation.id);
+
+                // showScreen עשויה להיחסם בדיאלוג אישור יציאה; אם כך קורה ההזמנה
+                // לא נרשמת כטופלה ותיבדק שוב בסבב הבא, כדי שלא תיבלע לעולם.
+                if (currentScreen !== 'game') {
+                    showScreen('game');
+                }
+                if (currentScreen === 'game') {
+                    handledAcceptedInvites.add(key);
+                    loadGame(invitation.gameId);
                 }
             })
             .catch(() => { /* מעקב שקט */ });
     }, 4000);
-    sentInvitePollInitialized = true;
 }
 
 function setupAdminEvents() {
