@@ -1,4 +1,4 @@
-/**
+﻿/**
  * לוגיקה ראשית של היישום - מתאם את כל רכיבי הממשק
  * 
  * מושג בינה מלאכותית #6: תזמור מודלים
@@ -35,6 +35,7 @@ let activeHistoryAccount = null;
 let historyLoading = false;
 let historyFinished = false;
 let previousScreenBeforeHistory = 'games';
+let gameEntryHistory = null;
 let lastNonGameScreen = 'home';
 const screenHistory = [];
 let pendingLeaveScreen = null;
@@ -315,6 +316,9 @@ function showScreen(screenName) {
     }
 
     if (currentScreen) screenHistory.push(currentScreen);
+    if (screenName === 'game') {
+        gameEntryHistory = screenHistory.slice();
+    }
     if (screenName !== 'game' && currentScreen !== 'game') lastNonGameScreen = screenName;
     applyScreen(screenName);
 }
@@ -435,6 +439,10 @@ function confirmLeaveGame() {
 
     const finish = () => {
         clearPersistedGameState();
+        if (Array.isArray(gameEntryHistory)) {
+            screenHistory.splice(0, screenHistory.length, ...gameEntryHistory);
+            gameEntryHistory = null;
+        }
         if (screenHistory[screenHistory.length - 1] === target) screenHistory.pop();
         if (target === '__logout__') {
             auth.currentUser = null;
@@ -1475,13 +1483,17 @@ function setupBoardControls() {
         pointerId = null;
         pointerCaptured = false;
         stage.classList.remove('panning', 'rotating');
-        if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+        if (event?.pointerId != null && stage.hasPointerCapture?.(event.pointerId)) {
+            stage.releasePointerCapture(event.pointerId);
+        }
     };
 
     stage.addEventListener('contextmenu', event => event.preventDefault());
 
     stage.addEventListener('pointerdown', event => {
         if (event.button !== 0 && event.button !== 2) return;
+        // הסיבוב מתחיל בלחיצה שמאלית וההזזה בלחיצה ימנית, בכל נקודה על הלוח.
+        // לחיצה פשוטה ללא תנועה עדיין מגיעה לבחירת הכלי דרך ה-click.
         mode = event.button === 2 ? 'pan' : 'rotate';
         pointerId = event.pointerId;
         startX = event.clientX;
@@ -1494,16 +1506,23 @@ function setupBoardControls() {
         stage.classList.toggle('rotating', mode === 'rotate');
     });
 
-    stage.addEventListener('pointermove', event => {
+    // מאזינים גלוביים מאפשרים להמשיך לגרור גם אם העכבר יצא מגבולות הלוח.
+    window.addEventListener('pointermove', event => {
         if (event.pointerId !== pointerId) return;
         const deltaX = event.clientX - startX;
         const deltaY = event.clientY - startY;
         if (!pointerCaptured && Math.hypot(deltaX, deltaY) >= DRAG_THRESHOLD) {
             event.preventDefault();
-            stage.setPointerCapture(pointerId);
+            try {
+                stage.setPointerCapture(pointerId);
+            } catch (error) {
+                // Pointer Capture אינו תמיד זמין, למשל בדפדפן נייד; המאזינים הגלוביים ממשיכים לעבוד.
+                console.debug('Pointer capture unavailable; using window listeners.', error);
+            }
             pointerCaptured = true;
         }
         if (!pointerCaptured) return;
+        event.preventDefault();
 
         if (mode === 'pan') {
             stage.style.setProperty('--board-pan-x', `${startPanX + deltaX}px`);
@@ -1515,13 +1534,11 @@ function setupBoardControls() {
         board.style.setProperty('--board-rotate', `${nextRotation}deg`);
         const nextTilt = Math.max(0, Math.min(BOARD_MAX_TILT, startTilt - deltaY * 0.25));
         board.style.setProperty('--board-tilt-x', `${nextTilt}deg`);
-    });
+    }, { passive: false });
 
-    stage.addEventListener('pointerup', stop);
-    stage.addEventListener('pointercancel', stop);
-    stage.addEventListener('lostpointercapture', event => {
-        if (event.pointerId === pointerId) stop(event);
-    });
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+    window.addEventListener('blur', stop);
 }
 function shouldFlipBoard() {
     if (!currentGame || !auth.currentUser) return false;
@@ -1636,7 +1653,7 @@ function renderChessBoard(fen, currentTurn) {
                 legalMoves.some(move =>
                     move.from.row === selectedPiece.row && move.from.col === selectedPiece.col &&
                     move.to.row === row && move.to.col === col)
-                || (piece && selectedSquare && game.isValidMove(
+                || (selectedSquare && game.isValidMove(
                     board,
                     { row: selectedSquare.row, col: selectedSquare.col },
                     { row, col },
@@ -1659,15 +1676,18 @@ function renderChessBoard(fen, currentTurn) {
                 pieceElement.innerHTML = getPieceSvg(piece.type);
                 pieceElement.setAttribute('aria-label', `${piece.color === 'white' ? 'כלי לבן' : 'כלי שחור'} ${getPieceTypeName(piece.type)}`);
                 pieceElement.draggable = false;
+                pieceElement.style.userSelect = 'none';
+                pieceElement.style.webkitUserDrag = 'none';
                 pieceElement.dataset.row = row;
                 pieceElement.dataset.col = col;
                 pieceElement.dataset.piece = piece.type;
                 pieceElement.dataset.color = piece.color;
+                pieceElement.addEventListener('click', event => {
+                    event.stopPropagation();
+                    handleSquareClick(row, col);
+                });
 
-                // הוספת פונקציונליות גרירה ושחרור
-                pieceElement.addEventListener('dragstart', handleDragStart);
-                pieceElement.addEventListener('dragend', handleDragEnd);
-
+                // הגרירה הוסרה: תנועת הכלים מתבצעת בלחיצה על כלי ולאחר מכן על משבצת היעד.
                 square.appendChild(pieceElement);
             }
 
@@ -1685,8 +1705,11 @@ function renderChessBoard(fen, currentTurn) {
         const col = Number.parseInt(square.dataset.col, 10);
         if (Number.isInteger(row) && Number.isInteger(col)) handleSquareClick(row, col);
     };
-    boardElement.ondragover = handleDragOver;
-    boardElement.ondrop = handleDrop;
+    // נטרלת גרירת תמונה: הלוח משתמש רק בקליק ובבקרת העכבר.
+    boardElement.ondragstart = event => event.preventDefault();
+    boardElement.ondragover = event => event.preventDefault();
+    boardElement.ondrop = event => event.preventDefault();
+    boardElement.ondragend = event => event.preventDefault();
 }
 
 /**
@@ -1756,12 +1779,17 @@ function findLegalMove(from, to) {
 }
 
 function handleSquareClick(row, col) {
-    if (!currentGame || currentGame.status !== 'active' || historicalGameView || !isCurrentPlayerTurn()) return;
+    if (!currentGame || currentGame.status !== 'active' || historicalGameView) return;
 
     const board = game.fenToBoard(currentGame.board);
     const pieceOnSquare = board[row]?.[col] || null;
 
     if (selectedSquare) {
+        if (!isCurrentPlayerTurn()) {
+            selectedSquare = null;
+            renderChessBoard(currentGame.board, currentGame.currentTurn);
+            return;
+        }
         const selectedPiece = board[selectedSquare.row]?.[selectedSquare.col];
         const legalMove = findLegalMove(selectedSquare, { row, col });
 
@@ -1775,7 +1803,7 @@ function handleSquareClick(row, col) {
             selectedPiece
         ));
 
-        if ((legalMove || (currentGame.legalMoves?.length === 0 && clientMoveIsLegal))
+        if ((legalMove || clientMoveIsLegal)
             && selectedPiece?.color === currentGame.currentTurn) {
             const move = legalMove || {
                 from: selectedSquare,
@@ -1790,13 +1818,7 @@ function handleSquareClick(row, col) {
 
     const canSelect = Boolean(
         pieceOnSquare &&
-        pieceOnSquare.color === currentGame.currentTurn &&
-        (
-            (currentGame.legalMoves || []).some(move =>
-                Number(move.from?.row) === row && Number(move.from?.col) === col
-            ) ||
-            currentGame.legalMoves?.length === 0
-        )
+        pieceOnSquare.color === currentGame.currentTurn
     );
 
     selectedSquare = canSelect ? { row, col } : null;
@@ -1808,49 +1830,8 @@ function notationFromSquare(square) {
 }
 
 /**
- * טיפול בתחילת גרירה
+ * הגרירה אינה חלק מהמשחק; כל התנועה מתבצעת בלחיצה על הכלי ועל משבצת היעד.
  */
-function handleDragStart(e) {
-    const piece = e.target;
-    piece.classList.add('dragging');
-    e.dataTransfer.setData('text/plain', `${piece.dataset.row},${piece.dataset.col}`);
-}
-
-/**
- * טיפול בסיום גרירה
- */
-function handleDragEnd(e) {
-    e.target.classList.remove('dragging');
-}
-
-/**
- * טיפול בגרירה מעל
- */
-function handleDragOver(e) {
-    e.preventDefault();
-}
-
-/**
- * טיפול בשחרור
- */
-function handleDrop(e) {
-    e.preventDefault();
-    const data = e.dataTransfer.getData('text/plain');
-    const [fromRow, fromCol] = data.split(',');
-    const toElement = e.target.closest('.square');
-
-    if (toElement) {
-        const toRow = parseInt(toElement.dataset.row);
-        const toCol = parseInt(toElement.dataset.col);
-
-        // המרה לניסוח אלגברי
-        const fromSquare = game.squareToNotation(parseInt(fromRow), parseInt(fromCol));
-        const toSquare = game.squareToNotation(toRow, toCol);
-
-        // שליחת המהלך שנבחר ישירות מהלוח
-        submitMoveToServer(fromSquare, toSquare);
-    }
-}
 
 /**
  * עדכון תצוגת היסטוריית מהלכים

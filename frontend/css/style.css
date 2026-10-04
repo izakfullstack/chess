@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Chess Tournament Frontend Styles
  * 
  * AI/ML Concept #4: Design systems
@@ -780,7 +780,8 @@ input[readonly] {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    perspective: 1200px;
+    /* ללא perspective כאן – הפרספקטיבה היחידה נמצאת על .chess-board-stage */
+    transform-style: flat;
 }
 
 .board-with-captures {
@@ -917,8 +918,9 @@ input[readonly] {
     margin: var(--spacing-md) auto;
     transform: translate3d(var(--board-pan-x, 0), var(--board-pan-y, 0px), 0);
     transform-origin: 50% 50%;
-    transform-style: preserve-3d;
-    perspective: 1200px;
+    /* פרספקטיבה יחידה לכל הלוח – נמצאת כאב ההיט-טסטינג בהטיה */
+    transform-style: flat;
+    perspective: 1600px;
 }
 
 .chess-board {
@@ -931,9 +933,9 @@ input[readonly] {
     border-radius: var(--radius-sm);
     margin: var(--spacing-md) auto;
     box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 0 2px rgba(255,255,255,0.08);
-    transform: perspective(1000px) rotateX(var(--board-tilt-x, 12deg)) rotateZ(var(--board-rotate, 0deg));
+    transform: rotateX(var(--board-tilt-x, 12deg)) rotateZ(var(--board-rotate, 0deg));
     transform-origin: 50% 50%;
-    transform-style: preserve-3d;
+    transform-style: flat;
     background: var(--chess-dark-square);
     cursor: grab;
     touch-action: none;
@@ -1012,7 +1014,7 @@ input[readonly] {
     opacity: 1 !important;
     cursor: grab;
     user-select: none;
-    pointer-events: none;
+    pointer-events: auto;
     filter: drop-shadow(0 3px 1px rgba(0, 0, 0, 0.48));
 }
 
@@ -1103,30 +1105,17 @@ input[readonly] {
     display: none;
 }
 
+/* כפתור "מרכז לוח" – שכבת מיקום ונראות (העיצוב המלא בהמשך הקובץ) */
 body.game-screen-active #center-board-global {
     position: fixed;
     right: 1rem;
     bottom: 4.75rem;
-    width: 7rem;
-    height: 7rem;
-    min-width: 7rem;
-    padding: 0.35rem;
-    border: 2px solid rgba(255, 255, 255, 0.92);
-    border-radius: 50%;
     z-index: 2147483000;
     display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto;
     margin: 0;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    line-height: 1.05;
-    text-align: center;
-    white-space: normal;
-    box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .game-status {
@@ -3192,17 +3181,6 @@ body:has(#screen-game.active) {
 
 
 @media (max-width: 768px) {
-    .center-guide-line {
-        width: 2px;
-        height: 1rem;
-    }
-
-    .center-guide-right,
-    .center-guide-left {
-        width: 1rem;
-        height: 2px;
-    }
-
     .board-with-captures {
         width: 100%;
         grid-template-columns: 2.25rem minmax(0, 32rem) 2.25rem;
@@ -3223,7 +3201,10 @@ body:has(#screen-game.active) {
     }
 
     body.game-screen-active #center-board-global {
-        --center-board-size: 5rem;
+        --center-board-size: 3.2rem;
+        --center-guide-length: 0.78rem;
+        --center-guide-thickness: 0.27rem;
+        --center-guide-gap: 0.4rem;
         width: var(--center-board-size) !important;
         height: var(--center-board-size) !important;
         min-width: var(--center-board-size) !important;
@@ -3278,55 +3259,196 @@ body.game-screen-active .header-content {
     top: 0;
 }
 
+/* ===== עיצוב מחדש: כפתור "מרכז לוח" בסגנון ג׳ויסטיק ===== */
 body.game-screen-active #center-board-global {
-    --center-board-size: 5.5rem;
+    --center-board-size: 3.8rem;
+    --center-guide-length: 0.95rem;
+    --center-guide-thickness: 0.32rem;
+    --center-guide-gap: 0.5rem;
+    /* שליש מהקו בתוך הכפתור ושני שליש מחוצה לו (הזחה = thickness/6) */
+    --center-guide-inset: calc(-1 * var(--center-guide-thickness, 0.22rem) / 6);
     position: fixed;
-    right: 1rem;
-    bottom: 4.75rem;
+    top: auto;
+    left: auto;
+    right: 3.5rem;
+    bottom: 8.5rem;
     width: var(--center-board-size);
     height: var(--center-board-size);
     min-width: var(--center-board-size);
-    padding: 0.1rem;
-    border: 0;
+    padding: 0;
+    border: 1px solid rgba(203, 213, 225, 0.55);
     border-radius: 50%;
-    box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.32);
+    background-color: rgba(9, 38, 69, 0.92);
+    box-shadow: var(--shadow-md), inset 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
+body.game-screen-active #center-board-global:hover {
+    background-color: rgba(18, 61, 102, 0.95);
+    border-color: rgba(226, 232, 240, 0.75);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md), inset 0 0 0 0.5px rgba(255, 255, 255, 0.25);
+}
+
+body.game-screen-active #center-board-global:active {
+    /* ללא scale – כדי שעובי קווי הג'ויסטיק יישאר זהה בכל מצב */
+    transform: translateY(1px);
+    border-color: rgba(203, 213, 225, 0.5);
+    box-shadow: var(--shadow-sm), inset 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+}
+
+.center-board-label {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm, 0.875rem);
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    text-align: center;
+}
+
+/* קווי ג׳ויסטיק – ארבעה קווים אחידים במרחק שווה מהכפתור */
 .center-guide-line {
     position: absolute;
     display: block;
-    width: 2px;
-    height: 1.25rem;
-    background: rgba(255, 255, 255, 0.95);
+    width: var(--center-guide-thickness, 0.22rem);
+    height: var(--center-guide-length, 0.72rem);
     border-radius: 999px;
+    background: #ffffff;
+    box-shadow: 0 0.18rem 0.4rem rgba(0, 0, 0, 0.45), 0 0 0.45rem rgba(255, 255, 255, 0.35);
     pointer-events: none;
+    transition: box-shadow 0.2s ease, background 0.2s ease, opacity 0.2s ease;
 }
 
 .center-guide-top {
-    top: -10px;
+    top: 0;
     left: 50%;
-    transform: translateX(-50%);
-}
-
-.center-guide-right {
-    right: -10px;
-    top: 50%;
-    width: 1.25rem;
-    height: 2px;
-    transform: translateY(-50%);
+    transform: translate(-50%, -50%);
 }
 
 .center-guide-bottom {
-    bottom: -10px;
+    bottom: 0;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, 50%);
+}
+
+.center-guide-right {
+    right: 0;
+    top: 50%;
+    width: var(--center-guide-length, 0.72rem);
+    height: var(--center-guide-thickness, 0.22rem);
+    transform: translate(50%, -50%);
 }
 
 .center-guide-left {
-    left: -10px;
+    left: 0;
     top: 50%;
-    width: 1.25rem;
-    height: 2px;
-    transform: translateY(-50%);
+    width: var(--center-guide-length, 0.72rem);
+    height: var(--center-guide-thickness, 0.22rem);
+    transform: translate(-50%, -50%);
 }
 
+/* נעול את מידות הקווים בכל מצב – עובי זהה תמיד */
+body.game-screen-active #center-board-global .center-guide-line {
+    width: var(--center-guide-thickness, 0.22rem);
+    height: var(--center-guide-length, 0.72rem);
+    box-sizing: border-box;
+}
+
+body.game-screen-active #center-board-global .center-guide-top,
+body.game-screen-active #center-board-global .center-guide-bottom {
+    width: var(--center-guide-thickness, 0.22rem);
+    height: var(--center-guide-length, 0.72rem);
+}
+
+body.game-screen-active #center-board-global .center-guide-left,
+body.game-screen-active #center-board-global .center-guide-right {
+    width: var(--center-guide-length, 0.72rem);
+    height: var(--center-guide-thickness, 0.22rem);
+}
+
+body.game-screen-active #center-board-global:hover .center-guide-line {
+    background: #ffffff;
+    box-shadow: 0 0.22rem 0.5rem rgba(0, 0, 0, 0.5), 0 0 0.8rem rgba(255, 255, 255, 0.85);
+}
+
+body.game-screen-active #center-board-global:active .center-guide-line {
+    background: #ffffff;
+    box-shadow: 0 0.1rem 0.25rem rgba(0, 0, 0, 0.55), 0 0 0.5rem rgba(255, 255, 255, 0.55);
+}
+
+body.game-screen-active #center-board-global:focus-visible .center-guide-line {
+    background: #ffffff;
+    box-shadow: 0 0.18rem 0.4rem rgba(0, 0, 0, 0.45), 0 0 0.6rem rgba(255, 255, 255, 0.65);
+}
+
+/* מיקום נוח לכותרת המשחק ולסטטוס במסך המשחק */
+.game-heading {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: clamp(0.8rem, 2vw, 1.5rem);
+    direction: ltr;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.game-heading #game-title {
+    order: 1;
+    margin: 0;
+    transform: translateX(-2.5rem);
+}
+
+.game-heading #game-status {
+    order: 2;
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+    .game-heading {
+        width: max-content;
+        max-width: 100%;
+        gap: 0.55rem;
+        transform: translateX(-0.5rem);
+    }
+
+    .game-heading #game-title {
+        font-size: 0.95rem;
+        transform: none;
+    }
+
+    .game-heading #game-status {
+        font-size: 0.72rem;
+    }
+}
+
+/* סיבוב אחיד של ארבעת קווי הג׳ויסטיק סביב מרכז הכפתור */
+#center-board-global .center-guide-set {
+    position: absolute;
+    display: block;
+    top: 50%;
+    left: 50%;
+    width: calc(var(--center-board-size) - 2 * var(--center-guide-inset, 0.36rem));
+    height: calc(var(--center-board-size) - 2 * var(--center-guide-inset, 0.36rem));
+    transform: translate(-50%, -50%);
+    transform-origin: center;
+    pointer-events: none;
+    z-index: 1;
+}

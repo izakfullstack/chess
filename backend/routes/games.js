@@ -710,8 +710,8 @@ router.post('/', (req, res) => {
                 return res.status(404).json({ error: 'Player 2 not found' });
             }
 
-            const player1Color = Math.random() < 0.5 ? WHITE : BLACK;
-            const player2Color = player1Color === WHITE ? BLACK : WHITE;
+            const player1Color = WHITE;
+            const player2Color = BLACK;
             db.run(
                 'INSERT INTO games (player1_id, player2_id, status, player1_color, player2_color) VALUES (?, ?, ?, ?, ?)',
                 [player1.id, player2.id, 'active', player1Color, player2Color],
@@ -1046,7 +1046,11 @@ router.post('/:id/complete', (req, res) => {
 
 /**
  * Update rating after a game
- * This is the core of the rating system
+ * Elo rating system (per plan.md):
+ *   K-factor: 32
+ *   Expected score: 1 / (1 + 10^((ratingOpponent - ratingPlayer)/400))
+ *   Rating change: K * (actualScore - expectedScore)
+ *   Starting rating: 1200, draw = 0.5 score for both players
  */
 function updateGameStatusAndRating(gameId, winnerId) {
     db.get(
@@ -1068,8 +1072,16 @@ function updateGameStatusAndRating(gameId, winnerId) {
                     const rating1 = r1.rating;
                     const rating2 = r2.rating;
 
-                    const change1 = winnerId === player1Id ? 10 : winnerId === player2Id ? -10 : 0;
-                    const change2 = winnerId === player2Id ? 10 : winnerId === player1Id ? -10 : 0;
+                    // Elo rating system (K-factor: 32)
+                    const K = 32;
+                    const expected1 = 1 / (1 + Math.pow(10, (rating2 - rating1) / 400));
+                    const expected2 = 1 / (1 + Math.pow(10, (rating1 - rating2) / 400));
+                    let actual1, actual2;
+                    if (winnerId === player1Id) { actual1 = 1; actual2 = 0; }
+                    else if (winnerId === player2Id) { actual1 = 0; actual2 = 1; }
+                    else { actual1 = 0.5; actual2 = 0.5; }
+                    const change1 = Math.round(K * (actual1 - expected1));
+                    const change2 = Math.round(K * (actual2 - expected2));
 
                     const newRating1 = rating1 + change1;
                     const newRating2 = rating2 + change2;

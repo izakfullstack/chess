@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>פלטפורמת תחרויות שחמט</title>
-    <link rel="stylesheet" href="/css/style.css?v=20260924-captured-pieces-4">
+    <link rel="stylesheet" href="/css/style.css?v=20261004-single-perspective-hitfix">
 </head>
 <body>
     <div id="verification-message" class="verification-message hidden" role="status" aria-live="polite">החשבון אומת בהצלחה</div>
@@ -335,11 +335,13 @@
     </main>
 
     <button id="center-board-global" class="btn btn-secondary" type="button">
-        <span>מרכז לוח</span>
-        <i class="center-guide-line center-guide-top" aria-hidden="true"></i>
-        <i class="center-guide-line center-guide-right" aria-hidden="true"></i>
-        <i class="center-guide-line center-guide-bottom" aria-hidden="true"></i>
-        <i class="center-guide-line center-guide-left" aria-hidden="true"></i>
+        <span class="center-board-label">מרכז<br>לוח</span>
+        <span class="center-guide-set" aria-hidden="true">
+            <i class="center-guide-line center-guide-top"></i>
+            <i class="center-guide-line center-guide-right"></i>
+            <i class="center-guide-line center-guide-bottom"></i>
+            <i class="center-guide-line center-guide-left"></i>
+        </span>
     </button>
 
     <div id="admin-profile-dialog" class="admin-profile-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="admin-profile-title">
@@ -468,6 +470,6 @@
     <script src="/js/auth.js"></script>
     <script src="/js/game.js"></script>
     <script src="/js/rating.js"></script>
-    <script src="/js/app.js?v=20260924-captured-pieces-4"></script>
+    <script src="/js/app.js?v=20261004-single-perspective-hitfix"></script>
 </body>
 </html>
