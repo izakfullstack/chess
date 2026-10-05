@@ -786,10 +786,20 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 /**
- * List all games
+ * רשימת משחקים - היסטוריה ציבורית.
  * GET /api/games
+ *
+ * ── החלטת מוצר ─────────────────────────────────────────────────────────
+ * לפי דרישת המשתמש: כל משתמש מחובר רשאי לראות את היסטוריית המשחקים
+ * של כולם, לא רק את שלו. לכן הרשימה כוללת משחקים של כל השחקנים.
+ *
+ * עדיין נדרש אסימון: היסטוריה היא מידע על שחקנים מחוברים בלבד, ולא
+ * מידע ציבורי פתוח לכל מי שיודע את הכתובת.
+ *
+ * הרשימה כוללת פרטי זיהוי בסיסיים בלבד (מספר חשבון, שם, תאריך, זוכר).
+ * לוח המשחק והמהלכים נטענים מנתיב /:id, שם נבדקת זהות הצופה.
  */
-router.get('/', (req, res) => {
+router.get('/', requireAuth, (req, res) => {
     db.all(
         `SELECT g.id, g.player1_id, g.player2_id, g.winner_id, g.status,
                 g.created_at, g.completed_at,
@@ -818,7 +828,12 @@ router.get('/', (req, res) => {
  *
  * ── אבטחה ─────────────────────────────────────────────────────────────
  * הנתיב מחובר ל-requireAuth, ולכן הזהות נובעת מאסימון מאומת.
- * צופה יכול לפתוח רק משחק שבו הוא אחד השחקנים.
+ *
+ * בהתאם לדרישת המשתמש: כל משתמש מחובר יכול לצפות בכל משחק, גם כזה שאינו שלו.
+ * צפייה כזאת בטוחה - הצופה מקבל את הלוח ואת היסטוריית המהלכים, אך:
+ *   - לא מקבל מהלכים חוקיים (requesterColor הוא null עבור צופה),
+ *   - ולא יכול לבצע מהלך או לסיים את המשחק - אלה נתיבים נפרדים שבודקים
+ *     שהשולח הוא אחד משני השחקנים.
  *
  * לפני התיקון הייתה פה בעיית כפילות: כאשר המבקש אינו אחד השחקנים,
  * requesterColor היה null - וכ״ canRequestMoves היה true (כי התנאי היה
@@ -848,15 +863,10 @@ router.get('/:id', requireAuth, (req, res) => {
                 return res.status(404).json({ error: 'Game not found' });
             }
 
-            // רק אחד משני השחקנים רשאי לראות משחק בפועל.
-            // בדיקה זו החליפה את הסתמכות על accountNumber מה-query, שניתן היה
-            // לזיות בכל בקשה (פשוט שלח מספר של מישהו אחר או בלי כלום).
-            const isPlayer = requesterAccount === String(game.player1_number)
-                || requesterAccount === String(game.player2_number);
-
-            if (!isPlayer) {
-                return res.status(403).json({ error: 'אין לך גישה למשחק הזה' });
-            }
+            // כל משתמש מחובר רשאי לצפות בכל משחק (היסטוריה ציבורית).
+            // הצופה אינו שחקן, ולכן requesterColor יישאר null ולא יקבל
+            // מהלכים חוקיים. ביצוע מהלך או סיום נשלטים בנתיבים נפרדים
+            // שבודקים שהשולח הוא אחד משני השחקנים.
 
             // Get moves for this game
             db.all(
@@ -892,12 +902,18 @@ router.get('/:id', requireAuth, (req, res) => {
                     const currentTurn = moves.length === 0
                         ? WHITE
                         : (moves[moves.length - 1].color === WHITE ? BLACK : WHITE);
+                    // שחקן מקבל את צבעו; צופה מקבל null ולכן לא מקבל
+                    // מהלכים חוקיים ולא יכול לבצע מהלך (נבדק בנתיב /move).
                     const isPlayer1 = requesterAccount === String(game.player1_number);
+                    const isPlayer2 = requesterAccount === String(game.player2_number);
                     const requesterColor = isPlayer1
                         ? (game.player1_color || WHITE)
-                        : (game.player2_color || BLACK);
-                    // מהלכים חוקיים נשלחים רק לשחקן שתורו - לא לצופה.
-                    const canRequestMoves = game.status === 'active' && requesterColor === currentTurn;
+                        : isPlayer2
+                            ? (game.player2_color || BLACK)
+                            : null;
+                    const canRequestMoves = game.status === 'active'
+                        && requesterColor !== null
+                        && requesterColor === currentTurn;
                     const legalMoves = canRequestMoves ? getLegalMoves(board, currentTurn, lastMove, moves) : [];
 
                     res.json({

@@ -1456,6 +1456,14 @@ function loadGame(gameId, historical = false, silent = false) {
     const xhr = new XMLHttpRequest();
     xhr.open('GET', `/api/games/${gameId}?accountNumber=${accountQuery}`);
 
+    // loadGame משתמש ב-XMLHttpRequest (ולא ב-fetch) כדי לקבל אירוע התקדמות
+    // לסרגל הטעינה. מכאן שה-interceptor של fetch לא מגן עליו - ולכן מוסיפים
+    // כאן את אותו אסימון ידנית. בלי זה הבקשה מוחזרת 401 והמשחק לא נטען.
+    const sessionToken = localStorage.getItem('chess_session_token');
+    if (sessionToken) {
+        xhr.setRequestHeader('Authorization', `Bearer ${sessionToken}`);
+    }
+
     xhr.onprogress = event => {
         if (!silent && event.lengthComputable && event.total > 0) {
             // עד 99% בזמן ההעברה; 100% יוגדר רק לאחר קבלת תשובה תקינה
