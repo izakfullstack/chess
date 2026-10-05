@@ -339,7 +339,7 @@ function setupGlobalEvents() {
     if (availabilityToggle) availabilityToggle.addEventListener('change', updateAvailability);
     document.getElementById('preferred-color')?.addEventListener('change', (event) => {
         if (!auth.currentUser) return;
-        fetch('/api/games/matchmaking/preferred-color', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountNumber: auth.currentUser.accountNumber, preferredColor: event.target.value }) });
+        fetch('/api/games/matchmaking/preferred-color', { method: 'POST',         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ preferredColor: event.target.value }) });
     });
     window.addEventListener('pagehide', () => setAvailability(false, false));
     window.addEventListener('beforeunload', () => setAvailability(false, false));
@@ -576,9 +576,13 @@ function confirmLeaveGame() {
             keepalive: true,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ winnerId })
-        }).catch(error => console.error('הכניעה לא נשמרה בשרת:', error));
+        }).catch(error => console.error('הכניעה לא נשמרה בשרת:', error))
+            .finally(() => {
+                if (target === '__logout__') auth.logoutUser();
+            });
     } else {
         finish();
+        if (target === '__logout__') auth.logoutUser();
     }
 }
 
@@ -718,7 +722,8 @@ function setupAdminEvents() {
     document.getElementById('admin-logout')?.addEventListener('click', () => {
         closeAdminProfile();
         closeManagersDialog();
-        localStorage.removeItem('admin_token');
+        adminRequest('/api/admin/logout', { method: 'POST' })
+            .catch(error => console.error('שגיאה ביציאה מניהול:', error));
         localStorage.removeItem('admin_username');
         showScreen('admin-login');
     });
@@ -747,15 +752,11 @@ function setupAdminEvents() {
 }
 
 function adminRequest(url, options = {}) {
-    return fetch(url, {
-        ...options,
-        headers: { ...(options.headers || {}), Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
-    }).then(async response => {
+    return fetch(url, options).then(async response => {
         let data = {};
         try { data = await response.json(); } catch (e) { /* ללא גוף JSON */ }
         if (response.status === 401) {
             // המושב פקע — ניקוי וחזרה למסך הכניסה לניהול
-            localStorage.removeItem('admin_token');
             closeAdminProfile();
             closeManagersDialog();
             showScreen('admin-login');
