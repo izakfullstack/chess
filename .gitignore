@@ -22,3 +22,6 @@ pre_*/
 pre-*/
 _feature_*/
 _restore*/
+
+# 3D chess models (large binary assets, ~340MB)
+frontend/assets/pieces3d/

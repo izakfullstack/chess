@@ -3291,3 +3291,27 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
 }
 
 /* t2 */
+
+/* ============================================================
+   לוח שחמט תלת-ממדי (Three.js)
+   כאשר הלוח התלת-ממדי פעיל, הקנבס תופס את מקום הרשת הוותיקה.
+   ============================================================ */
+
+.board3d-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    touch-action: none;
+}
+
+/* מסתיר את הרשת הדו-ממדית כשהלוח התלת-ממדי פעיל, ומשאיר
+   את גוף המסך לתפקיד מכלה אם ה-3D לא נטען. */
+body.board3d-active .chess-board {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.chess-board {
+    transition: opacity 0.2s ease;
+}

@@ -20,7 +20,6 @@ let currentGame = null;
 let moveHistory = [];
 let currentMoveIndex = -1;
 let selectedSquare = null;
-let board3d = null;
 let boardControlsBound = false;
 let invitationPollingTimer = null;
 let knownInvitationIds = new Set();
@@ -144,7 +143,6 @@ function initApp() {
     // הגדרת מאזיני אירועים גלובליים
     setupGlobalEvents();
     setupBoardControls();
-    setupBoard3D();
 
     // החזרת זהות המנהל מהאחסון המקומי (שם + אותיות)
     applyAdminIdentity(localStorage.getItem('admin_username'));
@@ -1739,18 +1737,10 @@ function renderChessBoard(fen, currentTurn) {
     const boardElement = document.getElementById('game-board');
     if (!boardElement) return;
 
-    const board = game.fenToBoard(fen);
-
-    // הלוח התלת-ממדי: אם המודול זמין, הוא מצייר; אחרת ממשיכים
-    // במסירת ה-SVG הוותיקה שמתחת - ללא שינוי בהתנהגות המשחק.
-    if (board3d) {
-        board3d.sync(board);
-        board3d.setFlip(shouldFlipBoard());
-        return;
-    }
-
     boardElement.innerHTML = '';
 
+    const board = game.fenToBoard(fen);
+    // הלוח מתהפך עבור השחקן השחור, כך שכל שחקן רואה את הכלים שלו בתחתית הלוח.
     const flipped = shouldFlipBoard();
 
     for (let displayRow = 0; displayRow < 8; displayRow++) {
@@ -1892,32 +1882,6 @@ function findLegalMove(from, to) {
         Number(item.to?.row) === Number(to.row) &&
         Number(item.to?.col) === Number(to.col)
     ) || null;
-}
-
-/**
- * טוען את מודול הלוח התלת-ממדי ומחבר אותו למסך המשחק.
- *
- * אם הטעינה נכשלת (אין אינטרנט, אין WebGL, קבצי הכלים חסרים)
- * המשתנה board3d נשאר null והלוח הוותיק ממשיך להוצג כמו קודם.
- */
-function setupBoard3D() {
-    const host = document.getElementById('chess-board-stage');
-    if (!host) return;
-
-    import('./board3d.js')
-        .then(async module => {
-            const ready = await module.init(host);
-            if (!ready) return;
-
-            board3d = module;
-            module.onSquareClick((row, col) => handleSquareClick(row, col));
-            document.body.classList.add('board3d-active');
-            // ציור מחדש מיד עם המיקום הנוכחי, אם כבר יש משחק פתוח
-            if (currentGame) renderChessBoard(currentGame.board, currentGame.currentTurn);
-        })
-        .catch(error => {
-            console.info('[app] לוח תלת-ממדי לא נטען, ממשיכים עם הלוח הדו-ממדי:', error);
-        });
 }
 
 function handleSquareClick(row, col) {
