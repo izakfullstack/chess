@@ -80,8 +80,9 @@ async function verifyPassword(password, stored) {
 
 // יצירה בלבד: מנהל קיים אינו מאופס — שינויים בפרופיל/SISMA נשמרים בין אתחולים
 async function ensureAdmin() {
-    if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
-        console.error('Admin seeding skipped: set ADMIN_USERNAME and ADMIN_PASSWORD in the environment.');
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD || ADMIN_PASSWORD.length < 12
+        || /^(your_|replace-with)/i.test(ADMIN_PASSWORD)) {
+        console.error('Admin seeding skipped: configure ADMIN_USERNAME and a non-placeholder ADMIN_PASSWORD of at least 12 characters.');
         return;
     }
     const existing = await dbGet('SELECT id FROM admin_users WHERE username = ?', [ADMIN_USERNAME]);
