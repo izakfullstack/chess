@@ -14,6 +14,7 @@
 // נתוני מושב משתמש נוכחי
 let currentUser = null;
 let authMode = 'login';
+let authNoticeTimer = null;
 
 /**
  * מסיר אסימון ישן שנשמר בגרסאות קודמות. סשנים חדשים נמצאים בעוגיית HttpOnly.
@@ -436,8 +437,16 @@ function requireAuth(message = 'יש להתחבר למערכת כדי להמשי
         setAuthMode('login');
         const authMessage = document.getElementById('auth-message');
         if (authMessage) {
+            clearTimeout(authNoticeTimer);
             authMessage.textContent = message;
             authMessage.className = 'form-message error';
+            authNoticeTimer = setTimeout(() => {
+                if (authMessage.textContent === message) {
+                    authMessage.textContent = '';
+                    authMessage.className = 'form-message';
+                }
+                authNoticeTimer = null;
+            }, 2000);
         }
         return false;
     }
