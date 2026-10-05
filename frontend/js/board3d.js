@@ -596,8 +596,9 @@ export function resetView() {
 
 function updateCamera() {
     if (!state.camera) return;
-    const height = 10.5;
-    const distance = state.flipped ? -12.5 : 12.5;
+    // הלוח הגדול (עד 64rem) ממלא את המסך: מצלמה קרובה יותר ונמוכה יותר.
+    const height = 8.5;
+    const distance = state.flipped ? -10.5 : 10.5;
     state.camera.position.set(0, height, distance);
     state.camera.lookAt(0, 0, 0);
     if (state.controls) {
