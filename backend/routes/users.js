@@ -454,7 +454,6 @@ router.get('/:id', requireAuth, (req, res) => {
     db.get(
         `SELECT u.id, u.account_number,
                 CASE WHEN u.show_full_name = 1 OR u.id = ? THEN u.full_name ELSE NULL END AS full_name,
-                u.gender,
                 r.rating, r.games_played, r.wins, r.losses
          FROM users u
          LEFT JOIN ratings r ON u.id = r.user_id
@@ -474,7 +473,6 @@ router.get('/:id', requireAuth, (req, res) => {
                 id: row.id,
                 accountNumber: row.account_number,
                 fullName: row.full_name,
-                gender: row.gender,
                 rating: row.rating || 1200,
                 gamesPlayed: row.games_played || 0,
                 wins: row.wins || 0,

@@ -805,12 +805,13 @@ router.get('/', requireAuth, (req, res) => {
                 g.created_at, g.completed_at,
                 u1.account_number AS player1_number,
                 u2.account_number AS player2_number,
-                u1.full_name AS player1_name,
-                u2.full_name AS player2_name
+                CASE WHEN u1.show_full_name = 1 OR u1.id = ? THEN u1.full_name ELSE NULL END AS player1_name,
+                CASE WHEN u2.show_full_name = 1 OR u2.id = ? THEN u2.full_name ELSE NULL END AS player2_name
          FROM games g
          JOIN users u1 ON g.player1_id = u1.id
          JOIN users u2 ON g.player2_id = u2.id
          ORDER BY g.created_at DESC`,
+        [req.user.id, req.user.id],
         (err, rows) => {
             if (err) {
                 console.error('Error getting games:', err);
@@ -847,13 +848,15 @@ router.get('/:id', requireAuth, (req, res) => {
     const requesterAccount = req.user.accountNumber;
 
     db.get(
-        `SELECT g.*, u1.account_number AS player1_number, u1.full_name AS player1_name,
-                u2.account_number AS player2_number, u2.full_name AS player2_name
+        `SELECT g.*, u1.account_number AS player1_number,
+                CASE WHEN u1.show_full_name = 1 OR u1.id = ? THEN u1.full_name ELSE NULL END AS player1_name,
+                u2.account_number AS player2_number,
+                CASE WHEN u2.show_full_name = 1 OR u2.id = ? THEN u2.full_name ELSE NULL END AS player2_name
          FROM games g
          JOIN users u1 ON g.player1_id = u1.id
          JOIN users u2 ON g.player2_id = u2.id
          WHERE g.id = ?`,
-        [gameId],
+        [req.user.id, req.user.id, gameId],
         (err, game) => {
             if (err) {
                 return res.status(500).json({ error: 'Database error' });
