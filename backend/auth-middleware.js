@@ -48,10 +48,19 @@ function getRow(sql, params) {
 async function createSession(userId) {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + SESSION_DAYS * 86400000);
-    // שאילתה מוכנה מראש: חשוב לא לכתוב $1/$2 ידנית, כי database.js
-    // ממיר את הסימנים ? למספרים וסופר אותם בנפרד.
+
+    // שני הערות חשובות לגבי שאילתה זו:
+    //
+    // 1. db.run מוסיף אוטומטית "RETURNING id" לכל INSERT. לטבלת
+    //    user_sessions אין עמודת id - המפתח שלה הוא token_hash - ולכן
+    //    חייב לציין RETURNING בעצמנו, אחרת PostgreSQL יזרוק
+    //    "column id does not exist".
+    //
+    // 2. אין לכתוב $1/$2 ידנית: database.js ממיר את סימני ? למספרים
+    //    וסופר אותם בנפרד, וכתיבה ידנית תיגע בספירה.
     await db.run(
-        `INSERT INTO user_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)`,
+        `INSERT INTO user_sessions (token_hash, user_id, expires_at)
+         VALUES (?, ?, ?) RETURNING token_hash`,
         [hashToken(token), userId, expiresAt]
     );
     return token;
