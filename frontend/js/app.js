@@ -765,15 +765,15 @@ function loadAdminAnalytics() {
 
 function renderAnalyticsList(elementId, rows, format) {
     const element = document.getElementById(elementId);
-    if (element) element.innerHTML = rows?.length ? rows.map(row => `<p>${format(row)}</p>`).join('') : '<p>אין נתונים בטווח שנבחר.</p>';
+    if (element) element.innerHTML = rows?.length ? rows.map(row => `<p>${escapeHtml(format(row))}</p>`).join('') : '<p>אין נתונים בטווח שנבחר.</p>';
 }
 
 function loadAdminUsers() {
     adminRequest('/api/admin/users').then(users => {
         const body = document.getElementById('admin-users-body');
-        body.innerHTML = users.map(user => `<tr class="admin-user-row" data-user-id="${user.id}">
-            <td>${user.accountNumber}</td><td>${user.fullName || ''}</td><td>${user.email || ''}</td>
-            <td>${user.city || ''}</td><td>${user.emailVerified ? 'מאומת' : 'לא אומת'}</td>
+        body.innerHTML = users.map(user => `<tr class="admin-user-row" data-user-id="${escapeHtml(user.id)}">
+            <td>${escapeHtml(user.accountNumber)}</td><td>${escapeHtml(user.fullName)}</td><td>${escapeHtml(user.email)}</td>
+            <td>${escapeHtml(user.city)}</td><td>${user.emailVerified ? 'מאומת' : 'לא אומת'}</td>
             <td>${new Date(user.createdAt).toLocaleString('he-IL')}<small> ביקורים: ${user.visitsCount || 0}<br>אחרון: ${user.lastVisitAt ? new Date(user.lastVisitAt).toLocaleString('he-IL') : 'אין'}<br>כניסות: ${user.loginCount || 0}<br>התחבר לאחרונה: ${user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString('he-IL') : 'אין'}</small></td><td>${user.rating || 1200}<small> משחקים: ${user.gamesCount || 0}<br>משחק אחרון: ${user.lastGameAt ? new Date(user.lastGameAt).toLocaleString('he-IL') : 'אין'}</small></td>
         </tr><tr class="admin-user-history hidden" id="admin-user-history-${user.id}"><td colspan="7">טוען פרטים והיסטוריה...</td></tr>`).join('');
         body.querySelectorAll('.admin-user-row').forEach(row => row.addEventListener('click', () => toggleAdminUserHistory(row.dataset.userId)));
@@ -1033,13 +1033,13 @@ function toggleAdminUserHistory(userId) {
         adminRequest('/api/admin/users').then(users => {
             const user = users.find(item => String(item.id) === String(userId));
             const details = user ? `<div class="admin-user-details">
-                <div><strong>שם פרטי</strong><span>${user.firstName || ''}</span></div>
-                <div><strong>שם משפחה</strong><span>${user.lastName || ''}</span></div>
-                <div><strong>תעודת זהות</strong><span>${user.idNumber || ''}</span></div>
-                <div><strong>תאריך לידה</strong><span>${user.dateOfBirth || ''}</span></div>
-                <div><strong>טלפון</strong><span>${user.phone || ''}</span></div>
-                <div><strong>מייל</strong><span>${user.email || ''}</span></div>
-                <div><strong>עיר</strong><span>${user.city || ''}</span></div>
+                <div><strong>שם פרטי</strong><span>${escapeHtml(user.firstName)}</span></div>
+                <div><strong>שם משפחה</strong><span>${escapeHtml(user.lastName)}</span></div>
+                <div><strong>תעודת זהות</strong><span>${escapeHtml(user.idNumber)}</span></div>
+                <div><strong>תאריך לידה</strong><span>${escapeHtml(user.dateOfBirth)}</span></div>
+                <div><strong>טלפון</strong><span>${escapeHtml(user.phone)}</span></div>
+                <div><strong>מייל</strong><span>${escapeHtml(user.email)}</span></div>
+                <div><strong>עיר</strong><span>${escapeHtml(user.city)}</span></div>
                 <div><strong>ביקורים</strong><span>${user.visitsCount || 0}</span></div>
                 <div><strong>ביקור אחרון</strong><span>${user.lastVisitAt ? new Date(user.lastVisitAt).toLocaleString('he-IL') : 'אין'}</span></div>
                 <div><strong>כניסות</strong><span>${user.loginCount || 0}</span></div>
