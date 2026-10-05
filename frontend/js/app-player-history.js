@@ -138,8 +138,3 @@ function getRatingClass(rating) {
     return 'rating-terrible';
 }
 
-/**
- * אתחול היישום כשהדף מוכן
- */
-
-
