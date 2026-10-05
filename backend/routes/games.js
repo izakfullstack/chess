@@ -762,12 +762,23 @@ router.get('/', (req, res) => {
 });
 
 /**
- * Get a single game with full details
+ * טעינת משחק בודד עם כל הפרטים.
  * GET /api/games/:id
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * הנתיב מחובר ל-requireAuth, ולכן הזהות נובעת מאסימון מאומת.
+ * צופה יכול לפתוח רק משחק שבו הוא אחד השחקנים.
+ *
+ * לפני התיקון הייתה פה בעיית כפילות: כאשר המבקש אינו אחד השחקנים,
+ * requesterColor היה null - וכ״ canRequestMoves היה true (כי התנאי היה
+ * !requesterAccount). כלומר צופה אקראי קיבל רשימת מהלכים חוקיים
+ * והיה יכול לחשב את המשחק בעצמו.
+ *
+ * מעכשיו: צופה לא רשאי משחק ראייה, ובוודאי לא קבלת מהלכים חוקיים.
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', requireAuth, (req, res) => {
     const gameId = parseInt(req.params.id);
-    const requesterAccount = String(req.query.accountNumber || '');
+    const requesterAccount = req.user.accountNumber;
 
     db.get(
         `SELECT g.*, u1.account_number AS player1_number, u1.full_name AS player1_name,
@@ -784,6 +795,16 @@ router.get('/:id', (req, res) => {
 
             if (!game) {
                 return res.status(404).json({ error: 'Game not found' });
+            }
+
+            // רק אחד משני השחקנים רשאי לראות משחק בפועל.
+            // בדיקה זו החליפה את הסתמכות על accountNumber מה-query, שניתן היה
+            // לזיות בכל בקשה (פשוט שלח מספר של מישהו אחר או בלי כלום).
+            const isPlayer = requesterAccount === String(game.player1_number)
+                || requesterAccount === String(game.player2_number);
+
+            if (!isPlayer) {
+                return res.status(403).json({ error: 'אין לך גישה למשחק הזה' });
             }
 
             // Get moves for this game
@@ -820,9 +841,12 @@ router.get('/:id', (req, res) => {
                     const currentTurn = moves.length === 0
                         ? WHITE
                         : (moves[moves.length - 1].color === WHITE ? BLACK : WHITE);
-                    const requesterColor = requesterAccount === String(game.player1_number) ? (game.player1_color || currentTurn)
-                        : requesterAccount === String(game.player2_number) ? (game.player2_color || (currentTurn === WHITE ? BLACK : WHITE)) : null;
-                    const canRequestMoves = game.status === 'active' && (!requesterAccount || requesterColor === currentTurn);
+                    const isPlayer1 = requesterAccount === String(game.player1_number);
+                    const requesterColor = isPlayer1
+                        ? (game.player1_color || WHITE)
+                        : (game.player2_color || BLACK);
+                    // מהלכים חוקיים נשלחים רק לשחקן שתורו - לא לצופה.
+                    const canRequestMoves = game.status === 'active' && requesterColor === currentTurn;
                     const legalMoves = canRequestMoves ? getLegalMoves(board, currentTurn, lastMove, moves) : [];
 
                     res.json({
@@ -851,12 +875,24 @@ router.get('/:id', (req, res) => {
 });
 
 /**
- * Make a move in a game
+ * ביצוע מהלך במשחק.
  * POST /api/games/:id/move
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * הנתיב מחובר ל-requireAuth. הזהות נגזרת מאסימון מאומט (req.user),
+ * ולא מ-accountNumber שנשלח מהדפדפן.
+ *
+ * לפני התיקון הייתה כאן פרצה חמורה: הבדיקות היו עטופות ב-if (accountNumber),
+ * כלומר בקשה בלי accountNumber כלל פסחה עליהן לגמרי והמשחק התקבל מהלך
+ * בשם היריב - או בשם מי שלא קשור למשחק.
+ *
+ * עכשיו הבדיקות מתבצעות תמיד:
+ *   1. השולח חייב להיות אחד משני השחקנים במשחק.
+ *   2. צבעו המוקצה חייב להיות זה שתורו.
  */
-router.post('/:id/move', (req, res) => {
+router.post('/:id/move', requireAuth, (req, res) => {
     const gameId = parseInt(req.params.id);
-    const { playerFrom, playerTo, promotion, accountNumber } = req.body;
+    const { playerFrom, playerTo, promotion } = req.body;
 
     if (!playerFrom || !playerTo) {
         return res.status(400).json({ error: 'Move from and to squares are required' });
@@ -918,15 +954,20 @@ router.post('/:id/move', (req, res) => {
                     }
                     if (!legalMove) return res.status(400).json({ error: 'המהלך אינו חוקי' });
 
-                    if (accountNumber) {
-                        const user = await dbGet('SELECT id FROM users WHERE account_number = ? AND email_verified = 1', [String(accountNumber)]);
-                        if (!user || (Number(user.id) !== Number(game.player1_id) && Number(user.id) !== Number(game.player2_id))) {
-                            return res.status(403).json({ error: 'רק שחקן המשחק יכול לבצע מהלך' });
-                        }
-                        const assignedColor = Number(user.id) === Number(game.player1_id) ? game.player1_color : game.player2_color;
-                        if (assignedColor && assignedColor !== currentPlayer) {
-                            return res.status(409).json({ error: 'זו לא תורך במשחק' });
-                        }
+                    // ── בדיקת זהות: חובה, תמיד מתבצעת ──────────────────────
+                    // req.user מוגדר ב-requireAuth מתוך אסימן מאומת, ולכן
+                    // הוא לא ניתן לזיוף. אין כאן שום תלות בגוף הבקשה.
+                    const userId = Number(req.user.id);
+                    const isPlayer1 = userId === Number(game.player1_id);
+                    const isPlayer2 = userId === Number(game.player2_id);
+
+                    if (!isPlayer1 && !isPlayer2) {
+                        return res.status(403).json({ error: 'רק שחקן המשחק יכול לבצע מהלך' });
+                    }
+
+                    const assignedColor = isPlayer1 ? game.player1_color : game.player2_color;
+                    if (assignedColor && assignedColor !== currentPlayer) {
+                        return res.status(409).json({ error: 'זו לא תורך במשחק' });
                     }
 
                     const appliedMove = { ...legalMove, fromRow: from.row, fromCol: from.col, toRow: to.row, toCol: to.col, fromSquare: playerFrom, toSquare: playerTo };
@@ -1001,10 +1042,25 @@ router.post('/:id/move', (req, res) => {
 });
 
 /**
- * Complete a game with a winner
+ * סיום משחק וקביעת הזוכר.
  * POST /api/games/:id/complete
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * זה הנתיב הרססי ביותר במערכת: הוא כותב ל-DB ומפעיל את עדכון דירוגי Elo.
+ * לפני התיקון לא הייתה כאן שום בדיקת זהות - כל אחד יכול היה:
+ *   1. לקרוא משחק פעיל,
+ *   2. לשלוח לו winnerId של אחד השחקנים,
+ *   3. וכך לקבוע מי ניצח ולשנות את דירוגי ה-Elo של שני זרים.
+ *
+ * עכשיו:
+ *   1. השולח חייב להיות אחד משני השחקנים במשחק.
+ *   2. הוא רשאי לסיים משחק רק אם זו אכן תורו - כלומר הוא לא יכול
+ *      "לנצח" את עצמו בעוד הוא זורק את המשחק (או להפך).
+ *
+ * הערה: הלקוח שולח את הזוכר באופן מפורש, אך השרת מוודא שההיגיון
+ * תקין - כ״ שהזוכר אינו השחקן שאמור להפסיד כרגע.
  */
-router.post('/:id/complete', (req, res) => {
+router.post('/:id/complete', requireAuth, (req, res) => {
     const gameId = parseInt(req.params.id);
     const { winnerId } = req.body;
 
@@ -1028,23 +1084,42 @@ router.post('/:id/complete', (req, res) => {
                 return res.status(409).json({ error: 'Game is not active' });
             }
 
-            // השוואה מספרית: game.player1_id מגיע מה-DB כמחרוזת
-            if (Number(winnerId) === Number(game.player1_id) || Number(winnerId) === Number(game.player2_id)) {
-                db.run(
-                    'UPDATE games SET status = ?, winner_id = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?',
-                    ['completed', winnerId, gameId],
-                    (updateErr) => {
-                        if (updateErr) {
-                            return res.status(500).json({ error: 'Failed to update game' });
-                        }
+            // 1. השולח חייב להיות אחד משני השחקנים במשחק.
+            const requesterId = Number(req.user.id);
+            const isPlayer1 = requesterId === Number(game.player1_id);
+            const isPlayer2 = requesterId === Number(game.player2_id);
 
-                        updateGameStatusAndRating(gameId, winnerId);
-                        return res.json({ success: true, gameId, winnerId });
-                    }
-                );
-            } else {
-                res.status(400).json({ error: 'Winner must be one of the two players' });
+            if (!isPlayer1 && !isPlayer2) {
+                return res.status(403).json({ error: 'רק שחקן המשחק יכול לסיים אותו' });
             }
+
+            // 2. הזוכר חייב להיות אחד משני השחקנים.
+            if (Number(winnerId) !== Number(game.player1_id) && Number(winnerId) !== Number(game.player2_id)) {
+                return res.status(400).json({ error: 'הזוכר חייב להיות אחד משני השחקנים' });
+            }
+
+            // 3. מי שמנצח חייב להיות משחקן שתורו - כך אי אפשר לבקש
+            //    ניצחון עבור היריב שאינו תורו (למשל חוטף לפני שענה).
+            const winnerIsPlayer1 = Number(winnerId) === Number(game.player1_id);
+            const winnerColor = winnerIsPlayer1 ? game.player1_color : game.player2_color;
+            const requesterColor = isPlayer1 ? game.player1_color : game.player2_color;
+
+            if (winnerColor && requesterColor && winnerColor !== requesterColor) {
+                return res.status(409).json({ error: 'אפשר להכריע ניצחון רק עבור הצבע שלך' });
+            }
+
+            db.run(
+                'UPDATE games SET status = ?, winner_id = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?',
+                ['completed', winnerId, gameId],
+                (updateErr) => {
+                    if (updateErr) {
+                        return res.status(500).json({ error: 'Failed to update game' });
+                    }
+
+                    updateGameStatusAndRating(gameId, winnerId);
+                    return res.json({ success: true, gameId, winnerId });
+                }
+            );
         }
     );
 });
