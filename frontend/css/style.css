@@ -992,6 +992,22 @@ input[readonly] {
     overflow: visible;
 }
 
+/* ספרייטים תלת־ממדיים (מודלי GLB) - מחליפים את ה־SVG במשבצת ובלוח החומר */
+.piece-3d {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.material-slot .piece-3d {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 .piece-svg .piece-fill,
 .piece-svg .piece-base,
 .piece-svg .piece-stem {

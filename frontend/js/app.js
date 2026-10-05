@@ -198,6 +198,7 @@ function initApp() {
     setupGlobalEvents();
     setupBoardControls();
     setupBoard3D();
+    setupPieces3D();
 
     // החזרת זהות המנהל מהאחסון המקומי (שם + אותיות)
     applyAdminIdentity(localStorage.getItem('admin_username'));
@@ -528,7 +529,7 @@ function cancelLeaveGame() {
 }
 
 /**
- * אישור יציאה: המשחק הופך לכניעה (היריב מנצח) ثم ניווט למסך היעד
+ * אישור יציאה: המשחק הופך לכניעה (היריב מנצח) ומבוצע ניווט למסך היעד
  */
 function confirmLeaveGame() {
     if (leaveConfirmationInProgress) return;
@@ -1781,7 +1782,7 @@ function renderCapturedPieces() {
             pieces.forEach(() => {
                 const slot = document.createElement('span');
                 slot.className = `material-slot ${color}`;
-                slot.innerHTML = getPieceSvg(type);
+                slot.innerHTML = getPieceSvg(type, color);
                 row.appendChild(slot);
             });
         };
@@ -1854,7 +1855,7 @@ function renderChessBoard(fen, currentTurn) {
                 pieceElement.className = `piece ${piece.color}${isSelectedSquare ? ' selected-piece' : ''}`;
                 const symbol = getPieceSymbol(piece.type, piece.color);
                 pieceElement.dataset.symbol = symbol;
-                pieceElement.innerHTML = getPieceSvg(piece.type);
+                pieceElement.innerHTML = getPieceSvg(piece.type, piece.color);
                 pieceElement.setAttribute('aria-label', `${piece.color === 'white' ? 'כלי לבן' : 'כלי שחור'} ${getPieceTypeName(piece.type)}`);
                 pieceElement.draggable = false;
                 pieceElement.style.userSelect = 'none';
@@ -1906,7 +1907,7 @@ function getPieceSymbol(type, color) {
         'knight': '♞',
         'pawn': '♟'
     };
-    return symbols[type] || '';
+    return symbols[normalizePieceType(type)] || '';
 }
 
 function getPieceTypeName(type) {
@@ -1917,13 +1918,58 @@ function getPieceTypeName(type) {
         bishop: 'פרש',
         knight: 'סוס',
         pawn: 'חייל'
-    }[type] || 'כלי';
+    }[normalizePieceType(type)] || 'כלי';
 }
 
 /**
- * יצירת כלי שחמט כ־SVG מלא, ללא תלות בגופני Unicode.
+ * כלים תלת־ממדיים על לוח ה־2D - מחליפים רק את תמונות הכלים;
+ * שאר הממשק (לוח, הדגשות, קליקים) לא משתנה כלל.
+ *
+ * PIECES_3D_ENABLED = true טוען את מודלי ה־GLB ומאפיין אותם לספרייטים
+ * עם רקע שקוף, המוחלפים במקום ה־SVG. אם הטעינה נכשלת - ממשיכים ב־SVG.
  */
-function getPieceSvg(type) {
+const PIECES_3D_ENABLED = true;
+let pieces3dSprites = null;
+
+// fenToBoard מחזיר סוגים בקיצורי FEN (r/n/b/q/k) חוץ מ-pawn.
+// שכבת ההצגה (SVG וספרייטים תלת-ממדיים) משתמשת בשמות המלאים.
+const PIECE_TYPE_ALIASES = { r: 'rook', n: 'knight', b: 'bishop', q: 'queen', k: 'king', p: 'pawn' };
+
+function normalizePieceType(type) {
+    return PIECE_TYPE_ALIASES[type] || type;
+}
+
+function getPieceSprite(color, type) {
+    if (!pieces3dSprites || !color || !type) return null;
+    return pieces3dSprites[`${color}-${type}`] || null;
+}
+
+function setupPieces3D() {
+    if (!PIECES_3D_ENABLED) return;
+
+    import('./pieces3d.js')
+        .then(module => module.bakeSprites())
+        .then(sprites => {
+            if (!sprites || !Object.keys(sprites).length) return;
+            pieces3dSprites = sprites;
+            document.body.classList.add('pieces3d-active');
+            // ציור מחדש כדי להחליף את ה־SVG שכבר הוצג בזמן האפייה
+            if (currentGame) renderChessBoard(currentGame.board, currentGame.currentTurn);
+        })
+        .catch(error => {
+            console.info('[app] ספרייטים תלת־ממדיים לא נטענים, ממשיכים עם הכלים הוותיקים:', error);
+        });
+}
+
+/**
+ * יצירת כלי שחמט: ספרייט תלת־ממד אם מוכן, אחרת SVG מלא ללא תלות בגופני Unicode.
+ */
+function getPieceSvg(type, color) {
+    const normalizedType = normalizePieceType(type);
+    const sprite = getPieceSprite(color, normalizedType);
+    if (sprite) {
+        return `<img class="piece-3d" src="${sprite}" alt="" aria-hidden="true" draggable="false" />`;
+    }
     const sharedBase = '<path class="piece-base" d="M23 78h54l6 8H17z"/><path class="piece-stem" d="M34 66h32l4 12H30z"/>';
     const pieces = {
         king: `<path class="piece-fill" d="M46 8h8v9h9v8h-9v11h-8V25h-9v-8h9z"/><path class="piece-fill" d="M50 34c-8 0-14 7-14 15 0 6 3 10 8 13l-7 8h26l-7-8c5-3 8-7 8-13 0-8-6-15-14-15z"/>${sharedBase}`,
@@ -1933,7 +1979,7 @@ function getPieceSvg(type) {
         knight: `<path class="piece-fill" d="M29 70l5-24-13-12 10-8 5-13 13 8 18 4c10 3 13 12 8 20l-8 13 5 12z"/><path class="piece-detail" d="M39 31l9 7-10 5"/><circle class="piece-detail-dot" cx="66" cy="34" r="3"/>${sharedBase}`,
         pawn: `<circle class="piece-fill" cx="50" cy="25" r="15"/><path class="piece-fill" d="M40 38c0 8-8 12-8 20 0 6 4 10 9 12H59c5-2 9-6 9-12 0-8-8-12-8-20z"/>${sharedBase}`
     };
-    return `<svg class="piece-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">${pieces[type] || pieces.pawn}</svg>`;
+    return `<svg class="piece-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">${pieces[normalizedType] || pieces.pawn}</svg>`;
 }
 
 /**
