@@ -163,16 +163,18 @@ function buildScene(container) {
     state.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     state.raycaster = new THREE.Raycaster();
 
-    // בקרת מצלמה: סיבוב סביב מרכז הלוח וzoom בגלגלת - מאפשר לראות
+    // בקרת מצלמה: סיבוב סביב מרכז הלוח, הזזה וזום בגלגלת - מאפשר לראות
     // את הכלים העומדים מכל כיוון. אם הספרייה לא נטענת - מבט קבוע.
     if (state.OrbitControls) {
         const controls = new state.OrbitControls(state.camera, canvas);
         controls.target.set(0, 0.4, 0);
         controls.enableDamping = true;
         controls.dampingFactor = 0.08;
-        controls.enablePan = false;
+        controls.enablePan = true;
+        controls.panSpeed = 0.8;
+        controls.screenSpacePanning = false;
         controls.minDistance = 7;
-        controls.maxDistance = 24;
+        controls.maxDistance = 30;
         // אין ירידה מתחת לפני הלוח ואין תצוגת-על חדה מדי.
         controls.minPolarAngle = 0.15;
         controls.maxPolarAngle = Math.PI / 2 - 0.08;
