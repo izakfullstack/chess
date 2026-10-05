@@ -132,55 +132,6 @@ function restoreLastScreen() {
 }
 
 /**
- * מוסיף אסימון ההתחברות באופן אוטמטי לכל בקשת API.
- *
- * ── למה כך ולא להעביר כל קריאה ל-apiRequest ידנית? ──────────────────────
- * ב-app.js יש כ-16 קריאות fetch בארבעה תבניות שונים (חלקן עם response.json(),
- * חלקן בודקות response.ok, וכו'). שכתוב כל אחת ידנית היה כנראה להכניס
- * את השגיאות - ובמקרה כזה כל בקשה הייתה מוחזרת כ-401 והמשחק נשבר.
- *
- * במקום זה נעטפת פונקציית fetch המובנית פעם אחת בעת עליית הדף. כך כל
- * קריאה קיימת (וגם כל קריאה עתידית) נושאת אסימון, בלי לגעת בקוד הקיים.
- *
- * ── מה לא נוגעים בזה ──────────────────────────────────────────────────
- *   - בקשות ל-/api/admin/... משתמשות באסימון הניהול (adminRequest), לא בזה.
- *   - כותרות שכבר נקבעו ידנית לא נדרסים - כך adminRequest לא ייפגע.
- *   - כתבי URL שאינם /api/ לא מושפעים כלל.
- */
-function installApiAuthInterceptor() {
-    const nativeFetch = window.fetch.bind(window);
-
-    window.fetch = function (url, options = {}) {
-        const isApiCall = String(url).startsWith('/api/');
-        const isAdminCall = String(url).startsWith('/api/admin/');
-
-        if (!isApiCall || isAdminCall) {
-            return nativeFetch(url, options);
-        }
-
-        const headers = options.headers || {};
-        // כותרת קיימת = המפתח עצמו הוסיף אסימון במכוון (למשל adminRequest)
-        const alreadyAuthorized = Object.keys(headers).some(
-            key => key.toLowerCase() === 'authorization'
-        );
-
-        if (alreadyAuthorized) {
-            return nativeFetch(url, options);
-        }
-
-        const token = localStorage.getItem('chess_session_token');
-        if (!token) {
-            return nativeFetch(url, options);
-        }
-
-        return nativeFetch(url, {
-            ...options,
-            headers: { ...headers, Authorization: `Bearer ${token}` }
-        });
-    };
-}
-
-/**
  * אתחול היישום
  */
 function initApp() {
@@ -1458,17 +1409,8 @@ function loadGame(gameId, historical = false, silent = false) {
         loadingVisible = true;
     }
 
-    const accountQuery = encodeURIComponent(auth.currentUser?.accountNumber || '');
     const xhr = new XMLHttpRequest();
-    xhr.open('GET', `/api/games/${gameId}?accountNumber=${accountQuery}`);
-
-    // loadGame משתמש ב-XMLHttpRequest (ולא ב-fetch) כדי לקבל אירוע התקדמות
-    // לסרגל הטעינה. מכאן שה-interceptor של fetch לא מגן עליו - ולכן מוסיפים
-    // כאן את אותו אסימון ידנית. בלי זה הבקשה מוחזרת 401 והמשחק לא נטען.
-    const sessionToken = localStorage.getItem('chess_session_token');
-    if (sessionToken) {
-        xhr.setRequestHeader('Authorization', `Bearer ${sessionToken}`);
-    }
+    xhr.open('GET', `/api/games/${gameId}`);
 
     xhr.onprogress = event => {
         if (!silent && event.lengthComputable && event.total > 0) {
