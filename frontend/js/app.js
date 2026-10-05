@@ -186,10 +186,8 @@ function installApiAuthInterceptor() {
 function initApp() {
     // טעינת האסימון לפני כל בקשת API - חייב להיות הראשון כדי שכל
     // הקריאות הבאות יישארו מוגנות.
-    installApiAuthInterceptor();
-
     // אתחול מודול אימות
-    auth.initAuth();
+    auth.initAuth().then(() => {
 
     // הגדרת ניווט
     setupNavigation();
@@ -255,6 +253,7 @@ function initApp() {
         showScreen('game');
         loadGame(gameId);
     }
+    });
 }
 
 /**
