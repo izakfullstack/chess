@@ -448,7 +448,7 @@ export function sync(board) {
         for (let col = 0; col < 8; col++) {
             const cell = board[row]?.[col];
             if (!cell) continue;
-            const mesh = makePiece(cell.color, cell.type);
+            const mesh = makePiece(cell.color, normalizePieceType(cell.type));
             if (!mesh) continue;
             const pos = squarePosition(row, col);
             mesh.position.set(pos.x, pos.y, pos.z);
