@@ -50,6 +50,7 @@ window.auth = auth;
 function initAuth() {
     setupAuthEvents();
     clearSession();
+    localStorage.removeItem('admin_token');
     localStorage.removeItem('chess_user');
 
     return fetch('/api/users/session', { cache: 'no-store' })

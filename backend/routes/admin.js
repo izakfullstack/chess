@@ -255,6 +255,7 @@ router.post('/managers', requireAdmin, async (req, res) => {
 
 router.post('/login', async (req, res) => {
     try {
+        if (!isSameOriginRequest(req)) return res.status(403).json({ error: 'בקשה ממקור חיצוני נדחתה' });
         if (typeof req.body.username !== 'string' || req.body.username.length > 128
             || typeof req.body.password !== 'string' || req.body.password.length < 1 || req.body.password.length > 128) {
             return res.status(400).json({ error: 'שם המשתמש או הסיסמה אינם תקינים' });

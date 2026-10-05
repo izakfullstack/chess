@@ -16,7 +16,7 @@
  * - auth.js: מטפל באימות משתמש (כמו תפיסה)
  * - game.js: מצייר את הלוח ומטפל במהלכים (כמו קבלת החלטות)
  * - rating.js: מציג דירוגים וטבלאות (כמו הערכה)
- * - app.js: מתאם הכל (כמו הבקר הראשי)
+ * - app-core.js: מתאם בין מודולי הממשק
  */
 
 let currentScreen = 'home';
@@ -143,7 +143,6 @@ function initApp() {
     // הקריאות הבאות יישארו מוגנות.
     // אתחול מודול אימות
     auth.initAuth().then(() => {
-    localStorage.removeItem('admin_token');
     // הגדרת ניווט
     setupNavigation();
 
@@ -673,4 +672,3 @@ function startSentInvitePolling() {
             .catch(() => { /* מעקב שקט */ });
     }, 4000);
 }
-

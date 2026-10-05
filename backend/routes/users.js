@@ -24,6 +24,7 @@ const {
     destroySession,
     setHttpOnlyCookie,
     clearHttpOnlyCookie,
+    isSameOriginRequest,
     SESSION_COOKIE,
     SESSION_DAYS
 } = require('../auth-middleware');
@@ -282,6 +283,8 @@ router.post('/register', async (req, res) => {
  * POST /api/users/login
  */
 router.post('/login', async (req, res) => {
+    if (!isSameOriginRequest(req)) return res.status(403).json({ error: 'בקשה ממקור חיצוני נדחתה' });
+
     const { accountNumber, password } = req.body;
 
     if (typeof accountNumber !== 'string' || !/^\d{6}$/.test(accountNumber)
