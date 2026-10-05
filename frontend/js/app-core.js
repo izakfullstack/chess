@@ -139,75 +139,50 @@ function restoreLastScreen() {
  * אתחול היישום
  */
 function initApp() {
-    // טעינת האסימון לפני כל בקשת API - חייב להיות הראשון כדי שכל
-    // הקריאות הבאות יישארו מוגנות.
-    // אתחול מודול אימות
-    auth.initAuth().then(() => {
-    // הגדרת ניווט
     setupNavigation();
-
-    // הגדרת מאזיני אירועים גלובליים
     setupGlobalEvents();
     setupBoardControls();
     setupBoard3D();
     setupPieces3D();
 
-    // החזרת זהות המנהל מהאחסון המקומי (שם + אותיות)
     applyAdminIdentity(localStorage.getItem('admin_username'));
 
-    if (window.location.pathname === '/admin') {
-        showScreen('admin-login');
-    } else {
-        restoreLastScreen();
-    }
+    auth.initAuth().then(() => {
+        if (window.location.pathname === '/admin') showScreen('admin-login');
+        else restoreLastScreen();
 
-    const verificationStatus = new URLSearchParams(window.location.search).get('verified');
-    const verificationSession = new URLSearchParams(window.location.search).get('verificationSession');
-    if (verificationSession) {
-        fetch(`/api/users/verification-session/${encodeURIComponent(verificationSession)}`)
-            .then(async response => {
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'אימות ההתחברות נכשל');
-                return data;
-            })
-            .then(data => {
-                auth.currentUser = data;
-                auth.updateUIForUser();
-            })
-            .catch(error => console.error('שגיאה בכניסה לאחר אימות:', error));
-    }
-    if (verificationStatus === '1') {
-        const verificationMessage = document.getElementById('verification-message');
-        verificationMessage.classList.remove('hidden');
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setTimeout(() => verificationMessage.classList.add('hidden'), 2000);
-    }
+        const params = new URLSearchParams(window.location.search);
+        const verificationSession = params.get('verificationSession');
+        if (verificationSession) {
+            fetch(`/api/users/verification-session/${encodeURIComponent(verificationSession)}`)
+                .then(async response => {
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'אימות ההתחברות נכשל');
+                    return data;
+                })
+                .then(data => {
+                    auth.currentUser = data;
+                    localStorage.setItem('chess_user', JSON.stringify(data));
+                    auth.updateUIForUser();
+                })
+                .catch(error => console.error('שגיאה בכניסה לאחר אימות:', error));
+        }
+        if (params.get('verified') === '1') {
+            const verificationMessage = document.getElementById('verification-message');
+            verificationMessage.classList.remove('hidden');
+            window.history.replaceState({}, document.title, window.location.pathname);
+            setTimeout(() => verificationMessage.classList.add('hidden'), 2000);
+        }
 
-    // טעינת נתונים ראשוניים
-    // מסך השחקנים נטען כאשר נכנסים אליו דרך showScreen('games').
+        startSentInvitePolling();
+        startInvitationPolling();
+        loadIncomingInvitations(false);
 
-    // מעקב בזמן אמת אחר אישור הזמנות ששלח המשתמש (פתיחת המשחק אצל המזמין)
-    startSentInvitePolling();
-
-    // מעקב אחר הזמנות שהתקבלו (פתיחת דיאלוג ההזמנה אצל הנמען).
-    // מופעל מכאן ולא רק ממסך "שחקנים", כדי שההזמנה תגיע גם אם השחקן
-    // נמצא במסך אחר (בית, לוח בקרה וכו').
-    startInvitationPolling();
-
-    // טעינה ראשונית: ההזמנות שכבר קיימות נרשמות כמותירות כדי שלא
-    // ייפתחו חלונות דיאלוג מיידיים על הזמנות ישנות שהשחקן כבר ראה.
-    loadIncomingInvitations(false);
-
-    // גישה ישירה למשחק: חייבים לעבור למסך המשחק לפני loadGame, בדיוק כמו
-    // ב-RestoreLastGame. בלי זה המשתמש נשאר במסך הקודם, ו-startGamePolling
-    // יבטל את עצמו כבר בסבב הראשון (currentScreen !== 'game') - כך שהמעקב
-    // אחרי כניעת היריב מעולם לא יעבוד בקישור ישיר.
-    const urlParams = new URLSearchParams(window.location.search);
-    const gameId = urlParams.get('game');
-    if (gameId) {
-        showScreen('game');
-        loadGame(gameId);
-    }
+        const gameId = params.get('game');
+        if (gameId) {
+            showScreen('game');
+            loadGame(gameId);
+        }
     });
 }
 

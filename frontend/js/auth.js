@@ -50,23 +50,40 @@ window.auth = auth;
 function initAuth() {
     setupAuthEvents();
     clearSession();
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('chess_user');
+
+    let cachedUser = null;
+    try {
+        const savedUser = localStorage.getItem('chess_user');
+        if (savedUser) {
+            const parsedUser = JSON.parse(savedUser);
+            if (parsedUser && /^\d{6}$/.test(String(parsedUser.accountNumber || ''))) {
+                cachedUser = parsedUser;
+            }
+        }
+    } catch (error) {
+        console.warn('פרטי משתמש מקומיים פגומים הוסרו:', error);
+    }
+    currentUser = cachedUser;
+    updateUIForUser();
 
     return fetch('/api/users/session', { cache: 'no-store' })
         .then(async response => {
-            if (response.status === 401) return null;
+            if (response.status === 401) {
+                localStorage.removeItem('chess_user');
+                return null;
+            }
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'נכשלה בדיקת ההתחברות');
             return data;
         })
         .then(user => {
             currentUser = user;
+            if (user) localStorage.setItem('chess_user', JSON.stringify(user));
+            else localStorage.removeItem('chess_user');
             updateUIForUser();
         })
         .catch(error => {
             console.error('שגיאה בשחזור ההתחברות:', error);
-            currentUser = null;
             updateUIForUser();
         });
 }
@@ -323,7 +340,7 @@ function loginUser(accountNumber, password) {
         };
 
         clearSession();
-        localStorage.removeItem('chess_user');
+        localStorage.setItem('chess_user', JSON.stringify(currentUser));
 
         if (typeof trackAnalyticsEvent === 'function') {
             trackAnalyticsEvent('login', '/auth', data.accountNumber);
