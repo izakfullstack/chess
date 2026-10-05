@@ -38,7 +38,8 @@ const auth = {
     handleLogout,
     updateUIForUser,
     requireAuth,
-    clearSession
+    clearSession,
+    logoutUser
 };
 
 window.auth = auth;
