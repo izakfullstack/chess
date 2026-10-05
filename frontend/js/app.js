@@ -211,13 +211,14 @@ function initApp() {
     const verificationSession = new URLSearchParams(window.location.search).get('verificationSession');
     if (verificationSession) {
         fetch(`/api/users/verification-session/${encodeURIComponent(verificationSession)}`)
-            .then(response => response.json())
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'אימות ההתחברות נכשל');
+                return data;
+            })
             .then(data => {
-                if (!data.error) {
-                    auth.currentUser = data;
-                    localStorage.setItem('chess_user', JSON.stringify(data));
-                    auth.updateUIForUser();
-                }
+                auth.currentUser = data;
+                auth.updateUIForUser();
             })
             .catch(error => console.error('שגיאה בכניסה לאחר אימות:', error));
     }
@@ -498,7 +499,7 @@ function applyScreen(screenName) {
         case 'player-history':
             break;
         case 'admin':
-            if (!localStorage.getItem('admin_token')) {
+            if (!localStorage.getItem('admin_username')) {
                 showScreen('admin-login');
                 return;
             }
