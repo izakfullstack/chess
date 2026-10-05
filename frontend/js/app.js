@@ -689,6 +689,43 @@ function setupAdminEvents() {
     document.getElementById('refresh-admin-users')?.addEventListener('click', loadAdminUsers);
 }
 
+/**
+ * משלח בקשת API עם אסימון ההתחברות של המשתמש.
+ *
+ * כל בקשה לשרת חייבת לשלוח Authorization: Bearer <token>.
+ * השרת מאמת מהאסימון הזה מי המשתמש - ולכן אי אפשר לזיות זהות
+ * ע"י שליחת מספר חשבון אחר של מישהו.
+ *
+ * ב-401 (האסימון פג או אינו תקין) המשתמש מנותק מהמערכת ומוחזר למסך ההתחברות.
+ */
+function apiRequest(url, options = {}) {
+    const token = localStorage.getItem('chess_session_token');
+
+    return fetch(url, {
+        ...options,
+        headers: {
+            ...(options.headers || {}),
+            Authorization: `Bearer ${token || ''}`
+        }
+    }).then(async response => {
+        let data = {};
+        try { data = await response.json(); } catch (e) { /* ללא גוף JSON */ }
+
+        if (response.status === 401 && token) {
+            // האסימון אינו תקין יותר - ניקוי וחזרה למסך ההתחברות.
+            localStorage.removeItem('chess_session_token');
+            if (typeof auth !== 'undefined' && auth.clearSession) auth.clearSession();
+            if (typeof showScreen === 'function') showScreen('login');
+            throw new Error(data.error || 'ההתחברות פגה - נא להתחבר מחדש');
+        }
+
+        if (!response.ok) {
+            throw new Error(data.error || `שגיאת שרת (${response.status})`);
+        }
+        return data;
+    });
+}
+
 function adminRequest(url, options = {}) {
     return fetch(url, {
         ...options,

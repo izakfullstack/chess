@@ -116,6 +116,13 @@ async function initializeTables() {
         id BIGSERIAL PRIMARY KEY, event_type TEXT NOT NULL, page TEXT, visitor_id TEXT,
         device_type TEXT, country TEXT, duration_seconds INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
+
+    // סשני משתמשים: נוצרים בהתחברות ומועברים לשרת בכל בקשה דרך Authorization: Bearer.
+    // זהו המקור היחיד האמין לזהות המשתמש - לא מספר חשבון שנשלח מהדפדפן.
+    await pool.query(`CREATE TABLE IF NOT EXISTS user_sessions (
+        token_hash TEXT PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL)`);
     await pool.query('CREATE INDEX IF NOT EXISTS idx_users_verification_token ON users(verification_token_hash)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_games_created_at ON games(created_at DESC)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_moves_game_id ON moves(game_id, move_number)');

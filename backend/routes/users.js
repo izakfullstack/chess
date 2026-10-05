@@ -18,6 +18,7 @@ const router = express.Router();
 const db = require('../database');
 const crypto = require('crypto');
 const { promisify } = require('util');
+const { requireAuth, createSession, destroySession } = require('../auth-middleware');
 const nodemailer = require('nodemailer');
 
 const scryptAsync = promisify(crypto.scrypt);
@@ -289,11 +290,17 @@ router.post('/login', async (req, res) => {
         }
         if (!row.email_verified) return res.status(403).json({ error: 'יש לאמת את החשבון דרך המייל לפני הכניסה' });
 
+        // נוצר סשן חדש. מעכשיו זהו האסימון שהלקוח שולח בכל בקשה,
+        // והוא זה שהשרת מאמת - לא מספר חשבון שנשלח מהדפדפן.
+        const sessionToken = await createSession(row.id);
+
         res.json({
             id: row.id, accountNumber: row.account_number, fullName: row.full_name,
             showFullName: Boolean(row.show_full_name),
             rating: row.rating || 1200, gamesPlayed: row.games_played || 0,
-            wins: row.wins || 0, losses: row.losses || 0, message: 'כניסה הצליחה'
+            wins: row.wins || 0, losses: row.losses || 0,
+            sessionToken,
+            message: 'כניסה הצליחה'
         });
     } catch (err) {
         console.error('Error logging in:', err);

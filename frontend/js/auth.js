@@ -15,6 +15,16 @@
 let currentUser = null;
 let authMode = 'login';
 
+/**
+ * מוחק את אסימון ההתחברות מהדפדפן.
+ *
+ * שם הפונקציה הזו (clearSession) נבחר בכוונה: בקובץ הזה כבר קיימת
+ * פונקציית requireAuth ששייכת לממשק ולא לשרת, ולכן לא ניתן להשתמש באותו שם.
+ */
+function clearSession() {
+    localStorage.removeItem('chess_session_token');
+}
+
 const auth = {
     get currentUser() {
         return currentUser;
@@ -30,7 +40,8 @@ const auth = {
     setAuthMode,
     handleLogout,
     updateUIForUser,
-    requireAuth
+    requireAuth,
+    clearSession
 };
 
 window.auth = auth;
@@ -301,8 +312,12 @@ function loginUser(accountNumber, password) {
             losses: data.losses
         };
 
-        // שמירה ב-localStorage
+        // שמירה ב-localStorage. האסימון נשמר במפתח נפרד מהפרופיל,
+        // כדי שאפשר יהיה לנקות אותו בלי לשנות את נתוני המשתמש.
         localStorage.setItem('chess_user', JSON.stringify(currentUser));
+        if (data.sessionToken) {
+            localStorage.setItem('chess_session_token', data.sessionToken);
+        }
 
         if (typeof trackAnalyticsEvent === 'function') {
             trackAnalyticsEvent('login', '/auth', data.accountNumber);
@@ -343,6 +358,7 @@ function handleLogout() {
     if (typeof clearPersistedGameState === 'function') clearPersistedGameState();
     currentUser = null;
     localStorage.removeItem('chess_user');
+    clearSession();
     updateUIForUser();
     showScreen('home');
 }

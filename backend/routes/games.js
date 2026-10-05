@@ -16,6 +16,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const { requireAuth } = require('../auth-middleware');
 
 const BOARD_SIZE = 8;
 const WHITE = 'white';
@@ -678,60 +679,58 @@ function gameStateFromMoves(board, currentPlayer, lastMove = null, moveHistory =
 }
 
 
-router.post('/', (req, res) => {
-    const { player1Account, player2Account, player1Id, player2Id } = req.body;
-    const resolvedPlayer1Account = player1Account || player1Id;
-    const resolvedPlayer2Account = player2Account || player2Id;
+/**
+ * יצירת משחק חדש.
+ * POST /api/games
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * הנתיב מחובר ל-requireAuth, ולכן req.user מוגדר תמיד מאסימן שהשרת אימת.
+ * המשתמש יכול ליצור משחק רק נגד עצמו - כלומר הוא תמיד player1,
+ * והיריב (player2) נקבע מההזמנה שאותה היריב אישר בעצמו.
+ * לפני התיקון אפשר היה לשלוח בקשה עם שני מספרי חשבון של אנשים אחרים
+ * וליצור משחק בשמם, בלי שאחד מהם ידע.
+ */
+router.post('/', requireAuth, (req, res) => {
+    const { player2Account } = req.body;
+    const creatorAccount = req.user.accountNumber;
 
-    if (!resolvedPlayer1Account || !resolvedPlayer2Account) {
-        return res.status(400).json({ error: 'Both player account numbers are required' });
+    if (!player2Account) {
+        return res.status(400).json({ error: 'חשבון היריב חסר' });
     }
 
-    if (player1Account === player2Account) {
-        return res.status(400).json({ error: 'Players cannot play against themselves' });
+    if (player2Account === creatorAccount) {
+        return res.status(400).json({ error: 'לא ניתן לשחק נגד עצמך' });
     }
 
-    // Verify both players exist and get their IDs
-    db.get('SELECT id FROM users WHERE account_number = ?', [resolvedPlayer1Account], (err, player1) => {
+    // Verify the opponent exists and is verified
+    db.get('SELECT id FROM users WHERE account_number = ? AND email_verified = 1', [player2Account], (err, player2) => {
         if (err) {
             return res.status(500).json({ error: 'Database error' });
         }
 
-        if (!player1) {
-            return res.status(404).json({ error: 'Player 1 not found' });
+        if (!player2) {
+            return res.status(404).json({ error: 'היריב לא נמצא' });
         }
 
-        db.get('SELECT id FROM users WHERE account_number = ?', [resolvedPlayer2Account], (err, player2) => {
-            if (err) {
-                return res.status(500).json({ error: 'Database error' });
-            }
-
-            if (!player2) {
-                return res.status(404).json({ error: 'Player 2 not found' });
-            }
-
-            const player1Color = WHITE;
-            const player2Color = BLACK;
-            db.run(
-                'INSERT INTO games (player1_id, player2_id, status, player1_color, player2_color) VALUES (?, ?, ?, ?, ?)',
-                [player1.id, player2.id, 'active', player1Color, player2Color],
-                function(err) {
-                    if (err) {
-                        return res.status(500).json({ error: 'Failed to create game' });
-                    }
-
-                    const gameId = this.lastID;
-
-                    res.json({
-                        id: gameId,
-                        player1Account: resolvedPlayer1Account,
-                        player2Account: resolvedPlayer2Account,
-                        status: 'active',
-                        message: 'Game created successfully'
-                    });
+        const player1Color = WHITE;
+        const player2Color = BLACK;
+        db.run(
+            'INSERT INTO games (player1_id, player2_id, status, player1_color, player2_color) VALUES (?, ?, ?, ?, ?)',
+            [req.user.id, player2.id, 'active', player1Color, player2Color],
+            function(err) {
+                if (err) {
+                    return res.status(500).json({ error: 'Failed to create game' });
                 }
-            );
-        });
+
+                res.json({
+                    id: this.lastID,
+                    player1Account: creatorAccount,
+                    player2Account,
+                    status: 'active',
+                    message: 'Game created successfully'
+                });
+            }
+        );
     });
 });
 
