@@ -2994,10 +2994,11 @@ body:has(.account-settings-screen.active) .site-header {
 }
 
 
-/* משחק ללא גלילת עמוד */
+/* משחק תלת-ממדי: הלוח יכול להתפרס על רוב המסך ללא חיתוך.
+   הגלילה הכללית נעולה רק ברוחב, הגובה חופשי כדי שהלוח הגדול לא ייחתך. */
 html:has(#screen-game.active),
 body:has(#screen-game.active) {
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 
