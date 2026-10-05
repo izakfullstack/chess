@@ -47,11 +47,21 @@ async function requireVerifiedUser(accountNumber) {
     return dbGet('SELECT id, account_number FROM users WHERE account_number = ? AND email_verified = 1', [accountNumber]);
 }
 
-router.get('/matchmaking/players', async (req, res) => {
+/**
+ * רשימת שחקנים זמינים להתאמה.
+ * GET /api/games/matchmaking/players
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * הזהות מגיעת מאסימון (requireAuth) ולא מ-req.query.accountNumber.
+ * לפני התיקון כל אחד יכול היה לבקש את הרשימה בשם משתמש אחר - כלומר
+ * לראות מי זמין למשחק, וגם לגלוש על ידי מי לא הוא עצמו.
+ *
+ * היוצא מהרשימה (ranked.id != ?) נשאר כפי שהיה - הסינון על צד השרת
+ * הוא ללא תלות בקלט מהלקוח.
+ */
+router.get('/matchmaking/players', requireAuth, async (req, res) => {
     try {
-        const accountNumber = String(req.query.accountNumber || '');
-        const currentUser = await requireVerifiedUser(accountNumber);
-        if (!currentUser) return res.status(403).json({ error: 'יש להתחבר עם חשבון מאומת' });
+        const currentUser = { id: req.user.id };
 
         // דירוג מחשב מעל כל המשתמשים המאומתים (כמו טבלת הדירוג), ורק אחר כך סינון-self
         const players = await dbAll(`
@@ -83,16 +93,22 @@ router.get('/matchmaking/players', async (req, res) => {
     }
 });
 
-router.post('/matchmaking/availability', async (req, res) => {
+/**
+ * עדכון זמינות השחקן להתאמה.
+ * POST /api/games/matchmaking/availability
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * לפני התיקון ניתן היה לשלוח accountNumber של משתמש אחר ולהפעיל או לכבות
+ * לו את הזמינות - כלומר להתחבק בשמו. עכשיו השורה נכתבת רק ל-req.user.id.
+ */
+router.post('/matchmaking/availability', requireAuth, async (req, res) => {
     try {
-        const user = await requireVerifiedUser(req.body.accountNumber);
-        if (!user) return res.status(403).json({ error: 'יש להתחבר עם חשבון מאומת' });
         const isAvailable = Boolean(req.body.isAvailable);
         await dbRun(`
             INSERT INTO player_availability (user_id, is_available, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(user_id) DO UPDATE SET is_available = excluded.is_available, updated_at = CURRENT_TIMESTAMP
             RETURNING user_id
-        `, [user.id, isAvailable ? 1 : 0]);
+        `, [req.user.id, isAvailable ? 1 : 0]);
         res.json({ isAvailable });
     } catch (error) {
         console.error('Error updating availability:', error);
@@ -100,28 +116,41 @@ router.post('/matchmaking/availability', async (req, res) => {
     }
 });
 
-router.post('/matchmaking/preferred-color', async (req, res) => {
+/**
+ * שמירת העדפת הצבע המועדף.
+ * POST /api/games/matchmaking/preferred-color
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * כמו בזמינות: העדפה נכתבת רק למשתמש שהאסימון מזהה.
+ * הערך עצמו מתנאל ע"י רשימת הערכים המותרים (white/black/random).
+ */
+router.post('/matchmaking/preferred-color', requireAuth, async (req, res) => {
     try {
-        const user = await requireVerifiedUser(req.body.accountNumber);
-        if (!user) return res.status(403).json({ error: 'יש להתחבר עם חשבון מאומת' });
         const preferredColor = ['white', 'black', 'random'].includes(req.body.preferredColor) ? req.body.preferredColor : 'random';
-        await dbRun('UPDATE users SET preferred_color = ? WHERE id = ?', [preferredColor, user.id]);
+        await dbRun('UPDATE users SET preferred_color = ? WHERE id = ?', [preferredColor, req.user.id]);
         res.json({ preferredColor });
     } catch (error) {
         res.status(500).json({ error: 'נכשלה שמירת העדפת הצבע' });
     }
 });
 
-router.get('/matchmaking/invitations', async (req, res) => {
+/**
+ * הזמנות שנקלטו על ידי המשתמש הנוכחי.
+ * GET /api/games/matchmaking/invitations
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * התנאי receiver_id = ? נשאר ב-SQL, אך ה-id מגיע עכשיו מהאסימון.
+ * לפני התיקון אפשר היה להעביר ?accountNumber= של מישהו אחר ולראות את
+ * ההזמנות שלו - כולל מי שהזמין אותו.
+ */
+router.get('/matchmaking/invitations', requireAuth, async (req, res) => {
     try {
-        const user = await requireVerifiedUser(req.query.accountNumber);
-        if (!user) return res.status(403).json({ error: 'יש להתחבר עם חשבון מאומת' });
         const invitations = await dbAll(`
             SELECT i.id, i.status, i.created_at AS "createdAt", u.account_number AS "senderAccount"
             FROM game_invitations i JOIN users u ON u.id = i.sender_id
             WHERE i.receiver_id = ? AND i.status = 'pending'
             ORDER BY i.created_at DESC
-        `, [user.id]);
+        `, [req.user.id]);
         res.json(invitations);
     } catch (error) {
         res.status(500).json({ error: 'נכשלה טעינת ההזמנות' });
@@ -129,13 +158,15 @@ router.get('/matchmaking/invitations', async (req, res) => {
 });
 
 /**
- * הזמנות ששלח המשתמש הנוכחי וסטטוס שלהן (לאיתור אישור בזמן אמת)
- * GET /api/games/matchmaking/sent-invitations?accountNumber=
+ * הזמנות ששלח המשתמש הנוכחי וסטטוס שלהן (לאיתור אישור בזמן אמת).
+ * GET /api/games/matchmaking/sent-invitations
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * מעקב זה רץ כל 4 שניות, ולפני התיקון היה אפשר לגרום לו "להתחבר" לכל חשבון
+ * ולקבל את רשימת ההזמנות שנשלחו על ידי משתמש אחר.
  */
-router.get('/matchmaking/sent-invitations', async (req, res) => {
+router.get('/matchmaking/sent-invitations', requireAuth, async (req, res) => {
     try {
-        const user = await requireVerifiedUser(req.query.accountNumber);
-        if (!user) return res.status(403).json({ error: 'יש להתחבר עם חשבון מאומת' });
         const invitations = await dbAll(`
             SELECT i.id, i.status, i.game_id AS "gameId", i.responded_at AS "respondedAt",
                    u.account_number AS "receiverAccount"
@@ -143,7 +174,7 @@ router.get('/matchmaking/sent-invitations', async (req, res) => {
             WHERE i.sender_id = ?
             ORDER BY i.created_at DESC
             LIMIT 30
-        `, [user.id]);
+        `, [req.user.id]);
         res.json(invitations);
     } catch (error) {
         console.error('Sent invitations error:', error);
@@ -151,11 +182,23 @@ router.get('/matchmaking/sent-invitations', async (req, res) => {
     }
 });
 
-router.post('/matchmaking/invitations', async (req, res) => {
+/**
+ * שליחת הזמנת משחק לשחקן אחר.
+ * POST /api/games/matchmaking/invitations
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * השולח תמיד req.user.id. לפני התיקון הגוף הכיל senderAccount, ולכן כל אחד
+ * יכול היה לשלוח הזמנות בשם משתמש אחר - מבלי שהוא ידע, וללא שיוכר מהנמען
+ * שההזמנה הגיעה ממנו (senderAccount מהגוף במקום מה-DB).
+ *
+ * receiverAccount עדיין מגיע מהגוף - זה תקין, כי זו בחירה של המשתמש
+ * למי להזמין. הוא נבדק ב-SQL ולא יכול "להזמין" משתמש שאינו קיים.
+ */
+router.post('/matchmaking/invitations', requireAuth, async (req, res) => {
     try {
-        const sender = await requireVerifiedUser(req.body.senderAccount);
+        const sender = { id: req.user.id, account_number: req.user.accountNumber };
         const receiver = await requireVerifiedUser(req.body.receiverAccount);
-        if (!sender || !receiver) return res.status(404).json({ error: 'השחקן אינו רשום או אינו מאומת' });
+        if (!receiver) return res.status(404).json({ error: 'השחקן אינו רשום או אינו מאומת' });
         if (sender.id === receiver.id) return res.status(400).json({ error: 'אי אפשר להזמין את עצמך' });
 
         const existing = await dbGet(`
@@ -175,10 +218,18 @@ router.post('/matchmaking/invitations', async (req, res) => {
     }
 });
 
-router.post('/matchmaking/invitations/:id/respond', async (req, res) => {
+/**
+ * תגובה להזמנה: אישור או דחייה.
+ * POST /api/games/matchmaking/invitations/:id/respond
+ *
+ * ── אבטחה ─────────────────────────────────────────────────────────────
+ * התנאי receiver_id = ? בשאילתת ההזמנה הוא שמירת הרשאה שאינה ניתנת
+ * לעקיפה: גם אם מזהים הזמנה של מישהו אחר, השאילתה לא תמצא אותה.
+ * בנוסף, ה-id עצמו מגיע עכשיו מ-req.user.id ולא מ-accountNumber שנשלח.
+ */
+router.post('/matchmaking/invitations/:id/respond', requireAuth, async (req, res) => {
     try {
-        const receiver = await requireVerifiedUser(req.body.accountNumber);
-        if (!receiver) return res.status(403).json({ error: 'יש להתחבר עם חשבון מאומת' });
+        const receiver = { id: req.user.id };
         const invitation = await dbGet(`
             SELECT * FROM game_invitations WHERE id = ? AND receiver_id = ? AND status = 'pending'
         `, [req.params.id, receiver.id]);
