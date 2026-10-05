@@ -188,7 +188,7 @@ function initApp() {
     // הקריאות הבאות יישארו מוגנות.
     // אתחול מודול אימות
     auth.initAuth().then(() => {
-
+    localStorage.removeItem('admin_token');
     // הגדרת ניווט
     setupNavigation();
 

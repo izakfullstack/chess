@@ -282,7 +282,8 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     const { accountNumber, password } = req.body;
 
-    if (!accountNumber || !/^\d{6}$/.test(accountNumber) || !password) {
+    if (typeof accountNumber !== 'string' || !/^\d{6}$/.test(accountNumber)
+        || typeof password !== 'string' || password.length < 1 || password.length > 128) {
         return res.status(400).json({ error: 'מספר חשבון חייב להיות בדיוק 6 ספרות' });
     }
 

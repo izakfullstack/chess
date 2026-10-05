@@ -23,6 +23,7 @@ try {
         if (Array.isArray(saved)) {
             for (const [tokenHash, data] of saved) {
                 if (/^[a-f0-9]{64}$/.test(tokenHash)
+                    && data && data.id != null && typeof data.username === 'string'
                     && Number.isFinite(data?.createdAt)
                     && Date.now() - data.createdAt < ADMIN_SESSION_MAX_AGE_MS) {
                     sessions.set(tokenHash, data);
