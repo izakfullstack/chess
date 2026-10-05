@@ -720,7 +720,8 @@ input[readonly] {
     width: 100%;
     margin: 0;
     display: grid;
-    grid-template-columns: 1fr minmax(0, 42rem) 1fr;
+    /* הלוח התלת-ממדי תופס את רוב המסך: עמודה מרכזית רחבה עד 64rem */
+    grid-template-columns: 1fr minmax(0, 64rem) 1fr;
     align-items: stretch;
     justify-content: center;
     direction: ltr;
