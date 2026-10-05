@@ -7,7 +7,7 @@
  * יישומי אינטרנט צריכים לנהל מצב משתמש.
  * מודול זה מטפל ב:
  * - מצב אימות משתמש
- * - אחסון טוקן/מושב
+ * - שחזור סשן מאובטח
  * - שחזור אוטומטי של מצב בטעינת עמוד
  */
 
@@ -16,10 +16,7 @@ let currentUser = null;
 let authMode = 'login';
 
 /**
- * מוחק את אסימון ההתחברות מהדפדפן.
- *
- * שם הפונקציה הזו (clearSession) נבחר בכוונה: בקובץ הזה כבר קיימת
- * פונקציית requireAuth ששייכת לממשק ולא לשרת, ולכן לא ניתן להשתמש באותו שם.
+ * מסיר אסימון ישן שנשמר בגרסאות קודמות. סשנים חדשים נמצאים בעוגיית HttpOnly.
  */
 function clearSession() {
     localStorage.removeItem('chess_session_token');
@@ -50,15 +47,26 @@ window.auth = auth;
  * אתחול מערכת האימות
  */
 function initAuth() {
-    // בדיקה אם המשתמש כבר מחובר (מאוחסן ב-localStorage)
-    const savedUser = localStorage.getItem('chess_user');
-    if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        updateUIForUser();
-    }
-
-    // הגדרת מאזיני אירועים
     setupAuthEvents();
+    clearSession();
+    localStorage.removeItem('chess_user');
+
+    return fetch('/api/users/session', { cache: 'no-store' })
+        .then(async response => {
+            if (response.status === 401) return null;
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'נכשלה בדיקת ההתחברות');
+            return data;
+        })
+        .then(user => {
+            currentUser = user;
+            updateUIForUser();
+        })
+        .catch(error => {
+            console.error('שגיאה בשחזור ההתחברות:', error);
+            currentUser = null;
+            updateUIForUser();
+        });
 }
 
 /**
@@ -218,9 +226,9 @@ function handleAdminLogin(event) {
             username: document.getElementById('admin-username').value.trim(),
             password: document.getElementById('admin-password').value
         })
-    }).then(response => response.json()).then(data => {
-        if (data.error) throw new Error(data.error);
-        localStorage.setItem('admin_token', data.token);
+    }).then(async response => {
+        const data = await response.json();
+        if (!response.ok || data.error) throw new Error(data.error || 'התחברות המנהל נכשלה');
         localStorage.setItem('admin_username', data.username);
         // עדכון שם המנהל והאותיות בסרגל ובפרופיל
         if (typeof applyAdminIdentity === 'function') applyAdminIdentity(data.username);
@@ -312,12 +320,8 @@ function loginUser(accountNumber, password) {
             losses: data.losses
         };
 
-        // שמירה ב-localStorage. האסימון נשמר במפתח נפרד מהפרופיל,
-        // כדי שאפשר יהיה לנקות אותו בלי לשנות את נתוני המשתמש.
-        localStorage.setItem('chess_user', JSON.stringify(currentUser));
-        if (data.sessionToken) {
-            localStorage.setItem('chess_session_token', data.sessionToken);
-        }
+        clearSession();
+        localStorage.removeItem('chess_user');
 
         if (typeof trackAnalyticsEvent === 'function') {
             trackAnalyticsEvent('login', '/auth', data.accountNumber);
@@ -356,11 +360,19 @@ function handleLogout() {
         return;
     }
     if (typeof clearPersistedGameState === 'function') clearPersistedGameState();
+    logoutUser();
+    currentUser = null;
+    updateUIForUser();
+    showScreen('home');
+}
+
+function logoutUser() {
+    const request = fetch('/api/users/logout', { method: 'POST', keepalive: true });
+    request.catch(error => console.error('שגיאה ביציאה מהמערכת:', error));
     currentUser = null;
     localStorage.removeItem('chess_user');
     clearSession();
-    updateUIForUser();
-    showScreen('home');
+    return request;
 }
 
 /**
