@@ -4,19 +4,32 @@ const { promisify } = require('util');
 const fs = require('fs');
 const path = require('path');
 const db = require('../database');
+const { hashToken, readCookie, setHttpOnlyCookie, clearHttpOnlyCookie, isSameOriginRequest } = require('../auth-middleware');
 
 const router = express.Router();
 const scryptAsync = promisify(crypto.scrypt);
 const sessions = new Map();
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'change-me-now';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_SESSION_COOKIE = 'chess_admin_session';
+const ADMIN_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
+const ADMIN_SESSION_MAX_AGE_MS = ADMIN_SESSION_MAX_AGE_SECONDS * 1000;
 const SESSIONS_FILE = path.join(__dirname, '..', '..', '.admin_sessions.json');
 
-// טעינת מושבים מהקובץ כדי שישרדו אתחולי שרת
+// טוענים רק hash-ים של אסימונים שטרם פגו; אסימונים ישנים בקובץ אינם תקפים.
 try {
     if (fs.existsSync(SESSIONS_FILE)) {
         const saved = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
-        for (const [token, data] of saved) sessions.set(token, data);
+        if (Array.isArray(saved)) {
+            for (const [tokenHash, data] of saved) {
+                if (/^[a-f0-9]{64}$/.test(tokenHash)
+                    && Number.isFinite(data?.createdAt)
+                    && Date.now() - data.createdAt < ADMIN_SESSION_MAX_AGE_MS) {
+                    sessions.set(tokenHash, data);
+                }
+            }
+            persistSessions();
+        }
     }
 } catch (error) {
     console.error('Failed to load admin sessions:', error.message);
@@ -66,6 +79,10 @@ async function verifyPassword(password, stored) {
 
 // יצירה בלבד: מנהל קיים אינו מאופס — שינויים בפרופיל/SISMA נשמרים בין אתחולים
 async function ensureAdmin() {
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+        console.error('Admin seeding skipped: set ADMIN_USERNAME and ADMIN_PASSWORD in the environment.');
+        return;
+    }
     const existing = await dbGet('SELECT id FROM admin_users WHERE username = ?', [ADMIN_USERNAME]);
     if (!existing) {
         await dbRun('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)', [ADMIN_USERNAME, await hashPassword(ADMIN_PASSWORD)]);
@@ -75,11 +92,31 @@ async function ensureAdmin() {
 ensureAdmin().catch((error) => console.error('Admin seed failed:', error.message));
 
 function requireAdmin(req, res, next) {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token || !sessions.has(token)) return res.status(401).json({ error: 'נדרשת הרשאת מנהל' });
-    req.admin = sessions.get(token);
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !isSameOriginRequest(req)) {
+        return res.status(403).json({ error: 'בקשה ממקור חיצוני נדחתה' });
+    }
+
+    const token = readCookie(req, ADMIN_SESSION_COOKIE);
+    const tokenHash = token ? hashToken(token) : '';
+    const session = sessions.get(tokenHash);
+    if (!session || Date.now() - session.createdAt >= ADMIN_SESSION_MAX_AGE_MS) {
+        if (session) {
+            sessions.delete(tokenHash);
+            persistSessions();
+        }
+        return res.status(401).json({ error: 'נדרשת הרשאת מנהל' });
+    }
+    req.admin = session;
     next();
 }
+
+router.post('/logout', requireAdmin, (req, res) => {
+    const token = readCookie(req, ADMIN_SESSION_COOKIE);
+    sessions.delete(hashToken(token));
+    persistSessions();
+    clearHttpOnlyCookie(res, ADMIN_SESSION_COOKIE);
+    res.json({ success: true });
+});
 
 router.get('/profile', requireAdmin, async (req, res) => {
     const admin = await dbGet('SELECT id, username, last_login_at AS "lastLoginAt" FROM admin_users WHERE id = ?', [req.admin.id]);
@@ -216,15 +253,20 @@ router.post('/managers', requireAdmin, async (req, res) => {
 
 router.post('/login', async (req, res) => {
     try {
+        if (typeof req.body.username !== 'string' || req.body.username.length > 128
+            || typeof req.body.password !== 'string' || req.body.password.length < 1 || req.body.password.length > 128) {
+            return res.status(400).json({ error: 'שם המשתמש או הסיסמה אינם תקינים' });
+        }
         const admin = await dbGet('SELECT * FROM admin_users WHERE username = ?', [req.body.username]);
         if (!admin || !(await verifyPassword(req.body.password || '', admin.password_hash))) {
             return res.status(401).json({ error: 'שם המשתמש או הסיסמה שגויים' });
         }
         const token = crypto.randomBytes(32).toString('hex');
-        sessions.set(token, { id: admin.id, username: admin.username, createdAt: Date.now() });
+        sessions.set(hashToken(token), { id: admin.id, username: admin.username, createdAt: Date.now() });
         persistSessions();
         await dbRun('UPDATE admin_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?', [admin.id]);
-        res.json({ token, username: admin.username });
+        setHttpOnlyCookie(res, ADMIN_SESSION_COOKIE, token, ADMIN_SESSION_MAX_AGE_SECONDS);
+        res.json({ username: admin.username });
     } catch (error) {
         console.error('Admin login error:', error);
         res.status(500).json({ error: 'נכשלה כניסת המנהל' });

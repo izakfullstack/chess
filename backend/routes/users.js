@@ -411,8 +411,8 @@ router.patch('/settings', requireAuth, async (req, res) => {
     const showFullName = req.body.showFullName === true;
     if (typeof req.body.showFullName !== 'boolean') return res.status(400).json({ error: 'ערך העדפת הצגת השם אינו תקין' });
     try {
-        const result = await dbRun('UPDATE users SET show_full_name = ? WHERE id = ? AND email_verified = 1', [showFullName ? 1 : 0, req.user.id]);
-        if (result.rowCount === 0) return res.status(404).json({ error: 'המשתמש לא נמצא' });
+        const result = await dbRun('UPDATE users SET show_full_name = ? WHERE id = ? AND email_verified = 1 RETURNING id', [showFullName ? 1 : 0, req.user.id]);
+        if (!result.lastID) return res.status(404).json({ error: 'המשתמש לא נמצא' });
         res.json({ showFullName });
     } catch (error) {
         console.error('Error saving account settings:', error);
@@ -445,16 +445,18 @@ router.get('/player/:accountNumber/history', (req, res) => {
     });
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', requireAuth, (req, res) => {
     const userId = parseInt(req.params.id);
 
     db.get(
-        `SELECT u.id, u.account_number, u.full_name, u.gender,
+        `SELECT u.id, u.account_number,
+                CASE WHEN u.show_full_name = 1 OR u.id = ? THEN u.full_name ELSE NULL END AS full_name,
+                u.gender,
                 r.rating, r.games_played, r.wins, r.losses
          FROM users u
          LEFT JOIN ratings r ON u.id = r.user_id
-         WHERE u.id = ?`,
-        [userId],
+         WHERE u.id = ? AND u.email_verified = 1`,
+        [req.user.id, userId],
         (err, row) => {
             if (err) {
                 console.error('Error getting user:', err);
