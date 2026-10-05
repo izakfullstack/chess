@@ -1897,10 +1897,17 @@ function findLegalMove(from, to) {
 /**
  * טוען את מודול הלוח התלת-ממדי ומחבר אותו למסך המשחק.
  *
+ * כרגע החיבור **מושבת בכוונה** (BOARD_3D_ENABLED = false) והלוח הוותיק
+ * ממשיך להוצג. כשנעבור ללוח התלת-ממדי נעביר את הדגל ל-true.
+ *
  * אם הטעינה נכשלת (אין אינטרנט, אין WebGL, קבצי הכלים חסרים)
  * המשתנה board3d נשאר null והלוח הוותיק ממשיך להוצג כמו קודם.
  */
+const BOARD_3D_ENABLED = false;
+
 function setupBoard3D() {
+    if (!BOARD_3D_ENABLED) return;
+
     const host = document.getElementById('chess-board-stage');
     if (!host) return;
 

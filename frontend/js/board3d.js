@@ -39,6 +39,12 @@ const TARGET_HEIGHT = {
     pawn: 0.50,
 };
 
+const PIECES_BASE = '/assets/pieces3d/';
+const BOARD_FILE = 'board.glb';
+
+/** גובה משטח הסימון השקוף שמונח על גבי הלוח (לצביע משבצת). */
+const OVERLAY_Y = 0.006;
+
 /** צבעי המשבצות והסימונים. */
 const LIGHT_SQUARE = 0xE8DCC8;
 const DARK_SQUARE = 0x9C7B54;
@@ -61,6 +67,9 @@ const state = {
     squares: [],
     pieces: [],
     models: new Map(),
+    boardModel: null,
+    boardLoaded: false,
+    boardWidth: 8,
     currentBoard: null,
     selected: null,
     legalMoves: [],
@@ -136,52 +145,85 @@ function buildScene(container) {
     state.raycaster = new THREE.Raycaster();
 
     buildSquares();
-    buildBase();
     resize();
     return true;
 }
 
-/** יוצר את ריבועות הלוח - 64 אובייקטים נפרדים כדי שאפשר לצבוע כל אחד. */
+/** יוצר שכבת סימון שקופה - 64 משטחים לצביע משבצת מעל הלוח. */
 function buildSquares() {
     const THREE = state.three;
-    const geometry = new THREE.BoxGeometry(1, 0.15, 1);
-    const lightMat = new THREE.MeshStandardMaterial({ color: LIGHT_SQUARE, roughness: 0.6 });
-    const darkMat = new THREE.MeshStandardMaterial({ color: DARK_SQUARE, roughness: 0.6 });
-
     state.squares = [];
     for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
             const isLight = (row + col) % 2 === 0;
-            const mesh = new THREE.Mesh(geometry, isLight ? lightMat : darkMat);
-            mesh.position.set(col - 3.5, -0.075, row - 3.5);
-            mesh.receiveShadow = true;
+            const mesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(1, 1),
+                new THREE.MeshBasicMaterial({
+                    color: 0xffffff, transparent: true, opacity: 0,
+                    depthWrite: false, side: THREE.DoubleSide,
+                })
+            );
+            mesh.rotation.x = -Math.PI / 2;
+            const p = squarePosition(row, col);
+            mesh.position.set(p.x, OVERLAY_Y, p.z);
             mesh.userData = { row, col, baseColor: isLight ? LIGHT_SQUARE : DARK_SQUARE };
             mesh.name = `square-${row}-${col}`;
+            mesh.renderOrder = 1;
             state.scene.add(mesh);
             state.squares.push(mesh);
         }
     }
 }
 
-/** בסיס עץ מתחת ללוח, למראה עומק ועוגן לתצוגה. */
-function buildBase() {
-    const THREE = state.three;
-    const base = new THREE.Mesh(
-        new THREE.BoxGeometry(8.4, 0.3, 8.4),
-        new THREE.MeshStandardMaterial({ color: 0x3A2A1E, roughness: 0.85 })
-    );
-    base.position.y = -0.3;
-    base.receiveShadow = true;
-    base.castShadow = true;
-    state.scene.add(base);
+/**
+ * מרכז ריבוע בקואורדינטות העולם.
+ * row 0 (ריבוע 8) ב-z שלילי, row 7 (ריבוע 1) ב-z חיובי.
+ */
+function squarePosition(row, col) {
+    return { x: col - 3.5, y: 0, z: row - 3.5 };
+}
 
-    const frame = new THREE.Mesh(
-        new THREE.BoxGeometry(8.9, 0.22, 8.9),
-        new THREE.MeshStandardMaterial({ color: 0x4A3728, roughness: 0.8 })
-    );
-    frame.position.y = -0.42;
-    frame.receiveShadow = true;
-    state.scene.add(frame);
+/**
+ * טוען את קובץ הלוח (board.glb) שמודל ב-Fusion 360.
+ *
+ * הקוד מיישר את המודל אוטומטית לנקודות שהמשחק מצפה להן:
+ * מרכז הלוח על (0,0,0), ופני המשבצות העליונות על y=0.
+ * כך גם אם המודל מגיע במיקום או בגודל אחרים - הוא יושב נכון.
+ *
+ * מחזיר Promise שנמסר עם true רק אם הקובץ נטען בהצלחה.
+ */
+function loadBoardModel() {
+    return new Promise(resolve => {
+        new state.GLTFLoader().load(
+            `${PIECES_BASE}${BOARD_FILE}`,
+            gltf => {
+                const root = gltf.scene;
+                if (!root) return resolve(false);
+
+                const THREE = state.three;
+                const box = new THREE.Box3().setFromObject(root);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const center = new THREE.Vector3();
+                box.getCenter(center);
+
+                root.position.x -= center.x;
+                root.position.z -= center.z;
+                root.position.y -= box.min.y;
+
+                root.traverse(obj => {
+                    if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; }
+                });
+
+                state.scene.add(root);
+                state.boardModel = root;
+                state.boardWidth = size.x || 8;
+                resolve(true);
+            },
+            undefined,
+            () => resolve(false)
+        );
+    });
 }
 
 /** מתאים את גודל הקנבס לגודל הקונטיינר. */
@@ -278,15 +320,6 @@ function prepareModel(gltf, type) {
 }
 
 /**
- * ממיר קואורדינטות לוח (row, col) למיקום תלת-ממדי.
- * מרכז הלוח הוא הנקודה (0,0,0), משבצת אחת = יחידה אחת.
- * row 0 = ריבוע 8 (הרחוק), col 0 = קובץ a (שמאל).
- */
-function squarePosition(row, col) {
-    return { x: col - 3.5, y: 0, z: row - 3.5 };
-}
-
-/**
  * יוצר אובייקט כלי מוכן להצבה על הלוח.
  * משתמש במודל שנטען מהקובץ התלת-ממדי; אם אין מודל, מחזיר null.
  * הכלי ממוקם כך שמרכזו במקום (0,0,0) ותחתיתו נוגעת בדיוק בפני הלוח.
@@ -360,7 +393,6 @@ function paintSquares() {
     state.squares.forEach(square => {
         const { row, col, baseColor } = square.userData;
         let color = baseColor;
-        let emissive = 0x000000;
 
         if (state.lastMove && (state.lastMove.from.row === row && state.lastMove.from.col === col
             || state.lastMove.to.row === row && state.lastMove.to.col === col)) {
@@ -374,8 +406,11 @@ function paintSquares() {
             color = COLOR_SELECTED;
         }
 
+        // השכבה שקופה: צביעה מרובה (blending) על גבי הלוח.
+        // MeshBasicMaterial אין לו emissive, ולכן משתמשים רק בצבע ובשקיפות.
+        const alpha = (color === baseColor) ? 0 : 0.55;
         square.material.color.setHex(color);
-        square.material.emissive.setHex(emissive);
+        square.material.opacity = alpha;
     });
 }
 
@@ -530,8 +565,14 @@ export async function init(container) {
         updateCamera();
         animate();
 
-        // הלוח מוכן מיד; הכלים יטענו ברקע ויופיעו כשיסתיימו
+        // הלוח מוכן מיד. המודל מפיוז'ן והכלים נטענים ברקע ומופיעים כשיסתיימים.
         state.ready = true;
+
+        loadBoardModel().then(okBoard => {
+            state.boardLoaded = okBoard;
+            if (okBoard && state.currentBoard) sync(state.currentBoard);
+        });
+
         loadPieces().then(okPieces => {
             if (okPieces && state.currentBoard) sync(state.currentBoard);
             state.piecesLoaded = okPieces;
@@ -555,6 +596,11 @@ export function destroy() {
     window.removeEventListener('resize', resize);
     if (state.renderer) state.renderer.dispose();
     state.ready = false;
+    if (state.boardModel) {
+        state.scene.remove(state.boardModel);
+        state.boardModel = null;
+    }
+    state.boardLoaded = false;
     state.pieces = [];
     state.squares = [];
     state.models.clear();
