@@ -1,4 +1,4 @@
-﻿/**
+/**
  * לוגיקה ראשית של היישום - מתאם את כל רכיבי הממשק
  * 
  * מושג בינה מלאכותית #6: תזמור מודלים
@@ -1504,14 +1504,16 @@ function loadGame(gameId, historical = false, silent = false) {
             const gameControls = document.querySelector('.game-controls');
             if (gameControls) gameControls.style.display = historical ? 'flex' : 'none';
 
+            // עדכון ניווט מהלכים - לפני ציור הלוח, כך שסימון "מהלך אחרון"
+            // בתצוגה התלת-ממדית יתבסס על האינדקס הנכון.
+            currentMoveIndex = game.moveHistory.length;
+
             // ציור לוח שחמט
             renderChessBoard(game.board, game.currentTurn);
 
             // עדכון היסטוריית מהלכים
             updateMoveHistory(game.moveHistory);
 
-            // עדכון ניווט מהלכים
-            currentMoveIndex = game.moveHistory.length;
             document.getElementById('game-move-number').textContent = `מהלך ${currentMoveIndex}`;
 
             // עדכון סטטוס משחק
@@ -1553,6 +1555,11 @@ function loadGame(gameId, historical = false, silent = false) {
  * ציור לוח שחמט
  */
 function resetBoardView() {
+    // בתצוגה התạ-ממדית "מרכוז לוח" מחזיר את המצלמה לנקודת ההתחלה.
+    if (board3d) {
+        board3d.resetView();
+        return;
+    }
     const stage = document.getElementById('chess-board-stage');
     const board = document.getElementById('game-board');
     if (!stage) return;
@@ -1812,6 +1819,26 @@ function renderChessBoard(fen, currentTurn) {
     if (board3d) {
         board3d.sync(board);
         board3d.setFlip(shouldFlipBoard());
+
+        // סימוני בחירה, מהלכים חוקיים ומהלך אחרון - ישירות לשכבת התלת-ממד.
+        const legalMoves = currentGame?.legalMoves || [];
+        const targets = selectedSquare
+            ? legalMoves
+                .filter(move => Number(move.from?.row) === selectedSquare.row
+                    && Number(move.from?.col) === selectedSquare.col)
+                .map(move => ({ row: Number(move.to.row), col: Number(move.to.col) }))
+            : [];
+        const history = currentGame?.moveHistory || [];
+        const lastIndex = currentMoveIndex > 0 && currentMoveIndex <= history.length
+            ? currentMoveIndex - 1
+            : -1;
+        const lastEntry = lastIndex >= 0 ? history[lastIndex] : null;
+        const lastMove = lastEntry
+            ? { from: game.notationToSquare(lastEntry.from), to: game.notationToSquare(lastEntry.to) }
+            : null;
+        board3d.setMarks({ selected: selectedSquare, legalMoves: targets, lastMove });
+
+        renderCapturedPieces();
         return;
     }
 
@@ -2008,13 +2035,14 @@ function findLegalMove(from, to) {
 /**
  * טוען את מודול הלוח התלת-ממדי ומחבר אותו למסך המשחק.
  *
- * כרגע החיבור **מושבת בכוונה** (BOARD_3D_ENABLED = false) והלוח הוותיק
- * ממשיך להוצג. כשנעבור ללוח התלת-ממדי נעביר את הדגל ל-true.
+ * BOARD_3D_ENABLED = true: הכלים מוצגים כמודלי GLB עומדים על לוח תלת-ממד
+ * עם שליטת מצלמה (סיבוב/זום) - אפשר לראות את הכלים מכל כיוון.
+ * לוח ברירת המחדל (2D + ספרייטים) ממשיך לשמש גם אם הטעינה נכשלת.
  *
  * אם הטעינה נכשלת (אין אינטרנט, אין WebGL, קבצי הכלים חסרים)
  * המשתנה board3d נשאר null והלוח הוותיק ממשיך להוצג כמו קודם.
  */
-const BOARD_3D_ENABLED = false;
+const BOARD_3D_ENABLED = true;
 
 function setupBoard3D() {
     if (!BOARD_3D_ENABLED) return;

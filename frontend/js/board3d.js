@@ -58,6 +58,7 @@ const state = {
     failed: false,
     three: null,
     GLTFLoader: null,
+    OrbitControls: null,
     renderer: null,
     scene: null,
     camera: null,
@@ -78,6 +79,9 @@ const state = {
     animating: false,
     onSelect: null,
     clock: null,
+    controls: null,
+    cameraApplied: false,
+    fallbackBoard: null,
 };
 
 export function isAvailable() {
@@ -94,6 +98,13 @@ async function loadLibrary() {
         state.three = await import('three');
         const mod = await import('three/addons/loaders/GLTFLoader.js');
         state.GLTFLoader = mod.GLTFLoader;
+        // בקרת מצלמה: סיבוב וzoom סביב הלוח. אם היא לא נטענת - המצלמה נשארת קבועה.
+        try {
+            const controlsMod = await import('three/addons/controls/OrbitControls.js');
+            state.OrbitControls = controlsMod.OrbitControls;
+        } catch (error) {
+            console.warn('[Board3D] בקרת המצלמה לא נטענת, ממשיכים עם מבט קבוע:', error);
+        }
         return true;
     } catch (error) {
         console.warn('[Board3D] Three.js לא נטען, ממשיכים עם הלוח הדו-ממדי:', error);
@@ -112,14 +123,15 @@ function buildScene(container) {
     container.appendChild(canvas);
     state.canvas = canvas;
 
-    state.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    state.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     state.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     state.renderer.shadowMap.enabled = true;
     state.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    state.renderer.setClearColor(0x0b1321, 1);
+    // רקע שקוף: צבע העמוד מה-CSS ממשיך מתחת לקנבס.
+    state.renderer.setClearColor(0x000000, 0);
 
     state.scene = new THREE.Scene();
-    state.scene.fog = new THREE.Fog(0x0b1321, 18, 34);
+    state.scene.fog = new THREE.Fog(0x0b1321, 22, 42);
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.65);
     state.scene.add(ambient);
@@ -144,9 +156,71 @@ function buildScene(container) {
     state.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     state.raycaster = new THREE.Raycaster();
 
+    // בקרת מצלמה: סיבוב סביב מרכז הלוח וzoom בגלגלת - מאפשר לראות
+    // את הכלים העומדים מכל כיוון. אם הספרייה לא נטענת - מבט קבוע.
+    if (state.OrbitControls) {
+        const controls = new state.OrbitControls(state.camera, canvas);
+        controls.target.set(0, 0.4, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.enablePan = false;
+        controls.minDistance = 7;
+        controls.maxDistance = 24;
+        // אין ירידה מתחת לפני הלוח ואין תצוגת-על חדה מדי.
+        controls.minPolarAngle = 0.15;
+        controls.maxPolarAngle = Math.PI / 2 - 0.08;
+        controls.rotateSpeed = 0.75;
+        controls.zoomSpeed = 0.9;
+        state.controls = controls;
+    }
+
+    buildFallbackBoard();
     buildSquares();
     resize();
     return true;
+}
+
+/**
+ * לוח ברירת מחדל מעוצב: מסגרת עץ + 64 משבצות.
+ * משמש כאשר קובץ board.glb לא קיים. המשבצות נמוכות במקצת משכבת
+ * הסימון שמעליהן ומקבלות צללים מהכלים העומדים.
+ */
+function buildFallbackBoard() {
+    const THREE = state.three;
+    const group = new THREE.Group();
+    group.name = 'fallback-board';
+
+    // מסגרת עץ סביב המשבצות.
+    const frame = new THREE.Mesh(
+        new THREE.BoxGeometry(9.1, 0.35, 9.1),
+        new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.75, metalness: 0 })
+    );
+    frame.position.y = -0.175;
+    frame.receiveShadow = true;
+    frame.castShadow = true;
+    group.add(frame);
+
+    // 64 משבצות בזוגיות בהירה/כהה.
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const isLight = (row + col) % 2 === 0;
+            const tile = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 0.06, 1),
+                new THREE.MeshStandardMaterial({
+                    color: isLight ? LIGHT_SQUARE : DARK_SQUARE,
+                    roughness: 0.55,
+                    metalness: 0,
+                })
+            );
+            const p = squarePosition(row, col);
+            tile.position.set(p.x, -0.03, p.z);
+            tile.receiveShadow = true;
+            group.add(tile);
+        }
+    }
+
+    state.scene.add(group);
+    state.fallbackBoard = group;
 }
 
 /** יוצר שכבת סימון שקופה - 64 משטחים לצביע משבצת מעל הלוח. */
@@ -199,7 +273,6 @@ function loadBoardModel() {
             gltf => {
                 const root = gltf.scene;
                 if (!root) return resolve(false);
-
                 const THREE = state.three;
                 const box = new THREE.Box3().setFromObject(root);
                 const size = new THREE.Vector3();
@@ -243,6 +316,15 @@ function resize() {
 async function loadPieces() {
     const THREE = state.three;
     const loader = new state.GLTFLoader();
+    // קובצי ה-GLB דחוסים ב-Draco — חייבים מפענח, כמו ב-pieces3d.
+    try {
+        const { DRACOLoader } = await import('three/addons/loaders/DRACOLoader.js');
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/gltf/');
+        loader.setDRACOLoader(dracoLoader);
+    } catch (error) {
+        console.warn('[Board3D] מפענח Draco לא נטען, מנסים בלי דחיסה:', error);
+    }
     const manager = new THREE.LoadingManager();
 
     const results = await Promise.allSettled(
@@ -292,21 +374,25 @@ function prepareModel(gltf, type) {
     box.getSize(size);
     box.getCenter(center);
 
-    // המודלים מגיעים בסקייל ובכיוון לא תקניים מ-Blender.
-    // מחזירים אותם למערכת שלנו: גובה נכון, בסיס על Y=0, מרכז ב-XZ.
     const holder = new THREE.Group();
     holder.add(gltf.scene);
 
-    const currentHeight = box.max.y - box.min.y;
-    const scale = currentHeight > 0 ? TARGET_HEIGHT[type] / currentHeight : 1;
+    // מודלי Fusion/Blender מגיעים עם הגובה בציר Z — מסובבים ל-Y כדי שיעמדו.
+    const zUp = size.z > size.y * 1.3;
+    if (zUp) holder.rotation.x = -Math.PI / 2;
+
+    const standingHeight = zUp ? size.z : size.y;
+    const scale = standingHeight > 0 ? TARGET_HEIGHT[type] / standingHeight : 1;
     holder.scale.setScalar(scale);
+    holder.updateMatrixWorld(true);
 
-    // מוסיפים סבבוב קל אם המודל מוטה על צדו
-    holder.rotation.x = 0;
-
-    holder.position.x = -center.x * scale;
-    holder.position.z = -center.z * scale;
-    holder.position.y = -box.min.y * scale;
+    // מודדים שוב אחרי הסיבוב והסקייל וממרכזים: בסיס על Y=0, מרכז ב-XZ.
+    const fixed = new THREE.Box3().setFromObject(holder);
+    const fixedCenter = new THREE.Vector3();
+    fixed.getCenter(fixedCenter);
+    holder.position.x -= fixedCenter.x;
+    holder.position.z -= fixedCenter.z;
+    holder.position.y -= fixed.min.y;
 
     root.add(holder);
     root.userData = { type, color: gltf.scene.userData?.color };
@@ -363,6 +449,7 @@ export function sync(board) {
             mesh.rotation.y = cell.color === 'black' ? Math.PI : 0;
             mesh.userData.row = row;
             mesh.userData.col = col;
+            state.scene.add(mesh);
             state.pieces.push(mesh);
         }
     }
@@ -472,11 +559,14 @@ function findPieceAt(row, col) {
 
 /**
  * מגדיר אם הלוח מוצג מהצד של השחקן השחור.
- * מסובב את המצלמה 180 סביב ציר Y.
+ * מסובב את המצלמה 180 סביב ציר Y - רק אם הכיוון באמת השתנה,
+ * כדי לא לאפס סיבוב ידני שהמשתמש ביצע בין רינדורים (polling).
  */
 export function setFlip(flipped) {
     if (!state.ready) return;
-    state.flipped = Boolean(flipped);
+    const next = Boolean(flipped);
+    if (state.cameraApplied && next === state.flipped) return;
+    state.flipped = next;
     updateCamera();
 }
 
@@ -485,12 +575,27 @@ export function isFlipped() {
     return state.flipped;
 }
 
+/**
+ * מחזיר את המצלמה לנקודת ההתחלה של הכיוון הנוכחי.
+ * משמש את כפתור "מרכז לוח".
+ */
+export function resetView() {
+    if (!state.ready) return;
+    updateCamera();
+    if (state.controls) state.controls.update();
+}
+
 function updateCamera() {
     if (!state.camera) return;
     const height = 10.5;
     const distance = state.flipped ? -12.5 : 12.5;
     state.camera.position.set(0, height, distance);
     state.camera.lookAt(0, 0, 0);
+    if (state.controls) {
+        state.controls.target.set(0, 0.4, 0);
+        state.controls.update();
+    }
+    state.cameraApplied = true;
 }
 
 /**
@@ -526,13 +631,26 @@ function pickSquare(event) {
 
 function handleClick(event) {
     if (!state.onSelect || state.animating) return;
+    // סיבוב/גרירה של המצלמה לא אמור לבחור ריבוע: אם הלחיצה התחילה
+    // הרחק ממקום השחרור - זו היתה גרירה, לא קליק.
+    if (state.dragStart) {
+        const dx = event.clientX - state.dragStart.x;
+        const dy = event.clientY - state.dragStart.y;
+        if (Math.hypot(dx, dy) > 6) return;
+    }
     const square = pickSquare(event);
     if (square) state.onSelect(square.row, square.col);
+}
+
+/** שמירת נקודת הלחיצה כדי להבחין בין קליק לסיבוב מצלמה. */
+function handlePointerDown(event) {
+    state.dragStart = { x: event.clientX, y: event.clientY };
 }
 
 /** לולאת הרינדור - מציירת מחדש בכל פריים. */
 function animate() {
     state.clock = requestAnimationFrame(animate);
+    if (state.controls) state.controls.update();
     if (state.renderer && state.scene && state.camera) {
         state.renderer.render(state.scene, state.camera);
     }
@@ -561,6 +679,7 @@ export async function init(container) {
         state.container = container;
         buildScene(container);
         state.canvas.addEventListener('click', handleClick);
+        state.canvas.addEventListener('pointerdown', handlePointerDown);
         window.addEventListener('resize', resize);
         updateCamera();
         animate();
@@ -589,8 +708,13 @@ export async function init(container) {
 export function destroy() {
     if (state.clock) cancelAnimationFrame(state.clock);
     state.clock = null;
+    if (state.controls) {
+        state.controls.dispose();
+        state.controls = null;
+    }
     if (state.canvas) {
         state.canvas.removeEventListener('click', handleClick);
+        state.canvas.removeEventListener('pointerdown', handlePointerDown);
         state.canvas.remove();
     }
     window.removeEventListener('resize', resize);
@@ -599,6 +723,10 @@ export function destroy() {
     if (state.boardModel) {
         state.scene.remove(state.boardModel);
         state.boardModel = null;
+    }
+    if (state.fallbackBoard) {
+        state.scene.remove(state.fallbackBoard);
+        state.fallbackBoard = null;
     }
     state.boardLoaded = false;
     state.pieces = [];
@@ -609,4 +737,40 @@ export function destroy() {
 /** מחזיר אם קבצי הכלים נטענו בהצלחה. */
 export function piecesLoaded() {
     return Boolean(state.piecesLoaded);
+}
+
+/**
+ * ממיר מרכז ריבוע לקואורדינטות מסך (viewport) - לבדיקות אוטומטיות
+ * ולכלי עתידיים. מחזיר null אם המודול לא מוכן.
+ */
+export function squareToScreen(row, col) {
+    if (!state.ready || !state.camera || !state.canvas) return null;
+    const p = squarePosition(row, col);
+    const vector = new state.three.Vector3(p.x, 0.1, p.z).project(state.camera);
+    const rect = state.canvas.getBoundingClientRect();
+    return {
+        x: rect.left + (vector.x + 1) / 2 * rect.width,
+        y: rect.top + (1 - vector.y) / 2 * rect.height,
+    };
+}
+
+/** מצב המודול - לבדיקות ולניפוי שגיאות. */
+export function stats() {
+    return {
+        ready: state.ready,
+        pieces: state.pieces.length,
+        models: state.models.size,
+        boardLoaded: Boolean(state.boardLoaded),
+        fallbackBoard: Boolean(state.fallbackBoard),
+        piecesLoaded: Boolean(state.piecesLoaded),
+        controls: Boolean(state.controls),
+        flipped: state.flipped,
+        selected: state.selected ? `${state.selected.row},${state.selected.col}` : null,
+        legalMarks: state.legalMoves.length,
+        camera: state.camera ? {
+            x: Number(state.camera.position.x.toFixed(2)),
+            y: Number(state.camera.position.y.toFixed(2)),
+            z: Number(state.camera.position.z.toFixed(2)),
+        } : null,
+    };
 }

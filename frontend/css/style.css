@@ -3315,10 +3315,18 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
 
 .board3d-canvas {
     display: block;
+    /* הקנבס מכסה את שלב הלוח כולו מעל רשת ה-2D המוסתרת. */
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     border-radius: 6px;
     touch-action: none;
+    cursor: grab;
+}
+
+.board3d-canvas:active {
+    cursor: grabbing;
 }
 
 /* מסתיר את הרשת הדו-ממדית כשהלוח התלת-ממדי פעיל, ומשאיר
