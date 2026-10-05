@@ -1165,14 +1165,22 @@ router.post('/:id/complete', requireAuth, (req, res) => {
                 return res.status(400).json({ error: 'הזוכר חייב להיות אחד משני השחקנים' });
             }
 
-            // 3. מי שמנצח חייב להיות משחקן שתורו - כך אי אפשר לבקש
-            //    ניצחון עבור היריב שאינו תורו (למשל חוטף לפני שענה).
-            const winnerIsPlayer1 = Number(winnerId) === Number(game.player1_id);
-            const winnerColor = winnerIsPlayer1 ? game.player1_color : game.player2_color;
-            const requesterColor = isPlayer1 ? game.player1_color : game.player2_color;
-
-            if (winnerColor && requesterColor && winnerColor !== requesterColor) {
-                return res.status(409).json({ error: 'אפשר להכריע ניצחון רק עבור הצבע שלך' });
+            // 3. פוסל כאן רק ניסיון לזכות בעצמך.
+            //
+            // הנתיב הזה מטפל בכניעה בלבד: השולח עוזב את המשחק והזוכר הוא
+            // היריב שלו (ראה confirmLeaveGame ב-client). סיום בהתאמה או בפייסול
+            // מתבצע בשרת עצמו בתוך /move (שורה ~1058), ולכן כאן אין שום הצדקה
+            // לכך שהזוכר יהיה השולח - מי שמכריז על זכייה עצמית מרמה.
+            //
+            // בכוונה אין בדיקת "תור": כניעה יכולה לקרות גם כשאין תורך
+            // (השחקן יוצא בהמתנה לתשובת היריב), ולכן כל כלל צבע/תור היה
+            // דוחה כניעות לגיטימיות. הבדיקה הקודמת ("ה winner חייב להיות
+            // בצבע שלך") בדיוק עשתה זאת - כל כניעה נדחתה ב-409 והמנצח לא
+            // קיבל התראה.
+            if (Number(winnerId) === requesterId) {
+                return res.status(409).json({
+                    error: 'בכניעה הזוכר חייב להיות היריב שלך, לא עצמך'
+                });
             }
 
             db.run(

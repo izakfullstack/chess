@@ -244,10 +244,14 @@ function initApp() {
     // ייפתחו חלונות דיאלוג מיידיים על הזמנות ישנות שהשחקן כבר ראה.
     loadIncomingInvitations(false);
 
-    // בדיקת פרמטרים בכתובת לגישה ישירה למשחק
+    // גישה ישירה למשחק: חייבים לעבור למסך המשחק לפני loadGame, בדיוק כמו
+    // ב-RestoreLastGame. בלי זה המשתמש נשאר במסך הקודם, ו-startGamePolling
+    // יבטל את עצמו כבר בסבב הראשון (currentScreen !== 'game') - כך שהמעקב
+    // אחרי כניעת היריב מעולם לא יעבוד בקישור ישיר.
     const urlParams = new URLSearchParams(window.location.search);
     const gameId = urlParams.get('game');
     if (gameId) {
+        showScreen('game');
         loadGame(gameId);
     }
 }
