@@ -18,7 +18,15 @@ const router = express.Router();
 const db = require('../database');
 const crypto = require('crypto');
 const { promisify } = require('util');
-const { requireAuth, createSession, destroySession } = require('../auth-middleware');
+const {
+    requireAuth,
+    createSession,
+    destroySession,
+    setHttpOnlyCookie,
+    clearHttpOnlyCookie,
+    SESSION_COOKIE,
+    SESSION_DAYS
+} = require('../auth-middleware');
 const nodemailer = require('nodemailer');
 
 const scryptAsync = promisify(crypto.scrypt);
@@ -293,13 +301,13 @@ router.post('/login', async (req, res) => {
         // נוצר סשן חדש. מעכשיו זהו האסימון שהלקוח שולח בכל בקשה,
         // והוא זה שהשרת מאמת - לא מספר חשבון שנשלח מהדפדפן.
         const sessionToken = await createSession(row.id);
+        setHttpOnlyCookie(res, SESSION_COOKIE, sessionToken, SESSION_DAYS * 86400);
 
         res.json({
             id: row.id, accountNumber: row.account_number, fullName: row.full_name,
             showFullName: Boolean(row.show_full_name),
             rating: row.rating || 1200, gamesPlayed: row.games_played || 0,
             wins: row.wins || 0, losses: row.losses || 0,
-            sessionToken,
             message: 'כניסה הצליחה'
         });
     } catch (err) {
@@ -335,6 +343,8 @@ router.get('/verification-session/:token', async (req, res) => {
             r.rating, r.games_played, r.wins, r.losses
             FROM users u LEFT JOIN ratings r ON r.user_id = u.id WHERE u.id = ? AND u.email_verified = 1`, [session.userId]);
         if (!row) return res.status(404).json({ error: 'המשתמש לא נמצא' });
+        const sessionToken = await createSession(row.id);
+        setHttpOnlyCookie(res, SESSION_COOKIE, sessionToken, SESSION_DAYS * 86400);
         res.json({ id: row.id, accountNumber: row.account_number, fullName: row.full_name,
             showFullName: Boolean(row.show_full_name), rating: row.rating || 1200, gamesPlayed: row.games_played || 0, wins: row.wins || 0, losses: row.losses || 0 });
     } catch (error) {
@@ -342,16 +352,54 @@ router.get('/verification-session/:token', async (req, res) => {
     }
 });
 
+router.get('/session', requireAuth, async (req, res) => {
+    try {
+        const row = await dbGet(
+            `SELECT u.id, u.account_number, u.full_name, u.show_full_name,
+                    r.rating, r.games_played, r.wins, r.losses
+             FROM users u LEFT JOIN ratings r ON r.user_id = u.id
+             WHERE u.id = ? AND u.email_verified = 1`,
+            [req.user.id]
+        );
+        if (!row) return res.status(404).json({ error: 'המשתמש לא נמצא' });
+
+        res.set('Cache-Control', 'no-store');
+        res.json({
+            id: row.id,
+            accountNumber: row.account_number,
+            fullName: row.full_name,
+            showFullName: Boolean(row.show_full_name),
+            rating: row.rating || 1200,
+            gamesPlayed: row.games_played || 0,
+            wins: row.wins || 0,
+            losses: row.losses || 0
+        });
+    } catch (error) {
+        console.error('Error loading session profile:', error);
+        res.status(500).json({ error: 'נכשלה טעינת פרטי המשתמש' });
+    }
+});
+
+router.post('/logout', requireAuth, async (req, res) => {
+    try {
+        await destroySession(req.sessionToken);
+        clearHttpOnlyCookie(res, SESSION_COOKIE);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error logging out:', error);
+        res.status(500).json({ error: 'נכשלה היציאה מהמערכת' });
+    }
+});
+
 /**
  * קבלת פרופיל משתמש עם דירוג
  * GET /api/users/:id
  */
-router.get('/settings', async (req, res) => {
-    const accountNumber = String(req.query.accountNumber || '');
-    if (!/^\d{6}$/.test(accountNumber)) return res.status(400).json({ error: 'מספר שחקן חייב להיות בדיוק 6 ספרות' });
+router.get('/settings', requireAuth, async (req, res) => {
     try {
-        const user = await dbGet('SELECT id, show_full_name FROM users WHERE account_number = ? AND email_verified = 1', [accountNumber]);
+        const user = await dbGet('SELECT show_full_name FROM users WHERE id = ? AND email_verified = 1', [req.user.id]);
         if (!user) return res.status(404).json({ error: 'המשתמש לא נמצא' });
+        res.set('Cache-Control', 'no-store');
         res.json({ showFullName: Boolean(user.show_full_name) });
     } catch (error) {
         console.error('Error loading account settings:', error);
@@ -359,15 +407,12 @@ router.get('/settings', async (req, res) => {
     }
 });
 
-router.patch('/settings', async (req, res) => {
-    const accountNumber = String(req.body.accountNumber || '');
+router.patch('/settings', requireAuth, async (req, res) => {
     const showFullName = req.body.showFullName === true;
-    if (!/^\d{6}$/.test(accountNumber)) return res.status(400).json({ error: 'מספר שחקן חייב להיות בדיוק 6 ספרות' });
     if (typeof req.body.showFullName !== 'boolean') return res.status(400).json({ error: 'ערך העדפת הצגת השם אינו תקין' });
     try {
-        const user = await dbGet('SELECT id FROM users WHERE account_number = ? AND email_verified = 1', [accountNumber]);
-        if (!user) return res.status(404).json({ error: 'המשתמש לא נמצא' });
-        await dbRun('UPDATE users SET show_full_name = ? WHERE id = ?', [showFullName ? 1 : 0, user.id]);
+        const result = await dbRun('UPDATE users SET show_full_name = ? WHERE id = ? AND email_verified = 1', [showFullName ? 1 : 0, req.user.id]);
+        if (result.rowCount === 0) return res.status(404).json({ error: 'המשתמש לא נמצא' });
         res.json({ showFullName });
     } catch (error) {
         console.error('Error saving account settings:', error);

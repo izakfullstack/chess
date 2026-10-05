@@ -27,6 +27,50 @@ const db = require('./database');
 
 /** אורך החיים של סשן: 30 יום. */
 const SESSION_DAYS = 30;
+const SESSION_COOKIE = 'chess_session';
+
+function readCookie(req, name) {
+    const cookieHeader = req.headers.cookie || '';
+    const entry = cookieHeader.split(';').map(value => value.trim())
+        .find(value => value.startsWith(`${name}=`));
+    if (!entry) return '';
+
+    try {
+        return decodeURIComponent(entry.slice(name.length + 1));
+    } catch {
+        return '';
+    }
+}
+
+function setHttpOnlyCookie(res, name, value, maxAgeSeconds) {
+    const attributes = [
+        `${name}=${encodeURIComponent(value)}`,
+        'Path=/api',
+        `Max-Age=${Math.floor(maxAgeSeconds)}`,
+        'HttpOnly',
+        'SameSite=Strict'
+    ];
+    if (process.env.NODE_ENV === 'production') attributes.push('Secure');
+
+    const cookie = attributes.join('; ');
+    const current = res.getHeader('Set-Cookie');
+    res.setHeader('Set-Cookie', current ? [...[].concat(current), cookie] : cookie);
+}
+
+function clearHttpOnlyCookie(res, name) {
+    setHttpOnlyCookie(res, name, '', 0);
+}
+
+function isSameOriginRequest(req) {
+    const origin = req.get('origin');
+    if (!origin) return true;
+
+    try {
+        return new URL(origin).host.toLowerCase() === req.get('host').toLowerCase();
+    } catch {
+        return false;
+    }
+}
 
 function hashToken(token) {
     return crypto.createHash('sha256').update(token).digest('hex');
@@ -72,10 +116,9 @@ async function destroySession(token) {
     await db.run('DELETE FROM user_sessions WHERE token_hash = ?', [hashToken(token)]);
 }
 
-/** קורא את האסימון מכותרת Authorization. */
+/** קורא אסימון סשן שאינו נגיש ל-JavaScript. */
 function readToken(req) {
-    const header = req.headers.authorization || '';
-    return header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    return readCookie(req, SESSION_COOKIE);
 }
 
 /**
@@ -84,6 +127,10 @@ function readToken(req) {
  */
 async function requireAuth(req, res, next) {
     try {
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !isSameOriginRequest(req)) {
+            return res.status(403).json({ error: 'בקשה ממקור חיצוני נדחתה' });
+        }
+
         const token = readToken(req);
         if (!token) {
             return res.status(401).json({ error: 'חסר אסימון גישה - יש להתחבר מחדש' });
@@ -121,4 +168,16 @@ async function purgeExpiredSessions() {
     }
 }
 
-module.exports = { requireAuth, createSession, destroySession, hashToken, purgeExpiredSessions };
+module.exports = {
+    requireAuth,
+    createSession,
+    destroySession,
+    hashToken,
+    purgeExpiredSessions,
+    readCookie,
+    setHttpOnlyCookie,
+    clearHttpOnlyCookie,
+    isSameOriginRequest,
+    SESSION_COOKIE,
+    SESSION_DAYS
+};
