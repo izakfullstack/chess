@@ -29,6 +29,13 @@
 const PIECE_TYPES = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
 const COLORS = ['white', 'black'];
 
+// fenToBoard מחזיר קיצורי FEN (r/n/b/q/k) חוץ מ-pawn — ממפה לשמות המלאים של קבצי ה-GLB.
+const PIECE_TYPE_ALIASES = { r: 'rook', n: 'knight', b: 'bishop', q: 'queen', k: 'king', p: 'pawn' };
+
+function normalizePieceType(type) {
+    return PIECE_TYPE_ALIASES[type] || type;
+}
+
 /** גובה מבוקש לכל סוג כלי, ביחידות של ריבוע אחד. */
 const TARGET_HEIGHT = {
     king: 1.02,
