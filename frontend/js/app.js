@@ -616,7 +616,7 @@ function startGamePolling(gameId) {
             stopGamePolling();
             return;
         }
-        fetch(`/api/games/${gameId}?accountNumber=${encodeURIComponent(auth.currentUser?.accountNumber || '')}`)
+        fetch(`/api/games/${gameId}`)
             .then(response => response.json())
             .then(latest => {
                 if (currentScreen !== 'game') return;
@@ -677,7 +677,7 @@ function startSentInvitePolling() {
     if (sentInvitePollTimer) return;
     sentInvitePollTimer = setInterval(() => {
         if (!auth.currentUser) return;
-        fetch(`/api/games/matchmaking/sent-invitations?accountNumber=${encodeURIComponent(auth.currentUser.accountNumber)}`)
+        fetch('/api/games/matchmaking/sent-invitations')
             .then(response => response.json())
             .then(invitations => {
                 if (!Array.isArray(invitations)) return;
@@ -1119,7 +1119,7 @@ function startInvitationPolling() {
 
 function loadMatchmakingPlayers() {
     if (!auth.currentUser) return;
-    fetch(`/api/games/matchmaking/players?accountNumber=${encodeURIComponent(auth.currentUser.accountNumber)}`)
+    fetch('/api/games/matchmaking/players')
         .then(response => response.json())
         .then(players => {
             const list = document.getElementById('available-players-list');
@@ -1164,7 +1164,7 @@ function setAvailability(isAvailable, updateControl = true, control = null) {
     if (!auth.currentUser) return;
     fetch('/api/games/matchmaking/availability', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountNumber: auth.currentUser.accountNumber, isAvailable })
+        body: JSON.stringify({ isAvailable })
     }).then(response => response.json()).then(data => {
         const availabilityLabel = document.getElementById('availability-label');
         if (availabilityLabel) availabilityLabel.textContent = data.isAvailable ? 'זמין' : 'לא זמין';
@@ -1175,7 +1175,7 @@ function setAvailability(isAvailable, updateControl = true, control = null) {
 window.sendGameInvitation = function(receiverAccount) {
     fetch('/api/games/matchmaking/invitations', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senderAccount: auth.currentUser.accountNumber, receiverAccount })
+        body: JSON.stringify({ receiverAccount })
     }).then(response => response.json()).then(data => {
         const message = document.getElementById('sent-invitation-message');
         const title = document.getElementById('sent-invitation-title');
@@ -1193,7 +1193,7 @@ window.sendGameInvitation = function(receiverAccount) {
 
 function loadIncomingInvitations(openNewDialog = false) {
     if (!auth.currentUser) return;
-    fetch(`/api/games/matchmaking/invitations?accountNumber=${encodeURIComponent(auth.currentUser.accountNumber)}`)
+    fetch('/api/games/matchmaking/invitations')
         .then(response => response.json()).then(invitations => {
             if (!Array.isArray(invitations)) return;
 
@@ -1236,7 +1236,7 @@ function respondToInvitation(accepted) {
     }
     fetch(`/api/games/matchmaking/invitations/${window.activeInvitationId}/respond`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountNumber: auth.currentUser.accountNumber, accepted })
+        body: JSON.stringify({ accepted })
     }).then(response => response.json()).then(data => {
         document.getElementById('invitation-dialog').classList.add('hidden');
         window.activeInvitationId = null;
@@ -1264,7 +1264,7 @@ function loadAccountSettings() {
     if (message) message.textContent = '';
     accountSettingsDirty = false;
     if (saveButton) saveButton.disabled = true;
-    fetch(`/api/users/settings?accountNumber=${encodeURIComponent(auth.currentUser.accountNumber)}`)
+    fetch('/api/users/settings')
         .then(response => response.json().then(data => ({ ok: response.ok, data })))
         .then(({ ok, data }) => {
             if (!ok) throw new Error(data.error || 'נכשלה טעינת ההגדרות');
@@ -1313,7 +1313,7 @@ function saveAccountSettings() {
     fetch('/api/users/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountNumber: auth.currentUser.accountNumber, showFullName })
+        body: JSON.stringify({ showFullName })
     })
         .then(response => response.json().then(data => ({ ok: response.ok, data })))
         .then(({ ok, data }) => {
