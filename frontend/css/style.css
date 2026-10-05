@@ -874,7 +874,7 @@ input[readonly] {
 .chess-board-stage {
     position: relative;
     top: -2rem !important;
-    width: min(100%, 42rem);
+    width: min(100%, 64rem);
     aspect-ratio: 1;
     margin: var(--spacing-md) auto;
     transform: translate3d(var(--board-pan-x, 0), var(--board-pan-y, 0px), 0);
