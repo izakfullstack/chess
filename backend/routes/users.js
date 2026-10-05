@@ -90,6 +90,8 @@ function dbGet(sql, params = []) {
 
 async function ensureSeedUsers() {
     try {
+        if (process.env.SEED_DEMO_USERS !== 'true') return;
+
         const total = await new Promise((resolve, reject) => {
             db.get('SELECT COUNT(*) AS count FROM users', (err, row) => {
                 if (err) reject(err);
