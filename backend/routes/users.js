@@ -34,6 +34,13 @@ const scryptAsync = promisify(crypto.scrypt);
 const APP_URL = process.env.APP_URL || 'http://localhost:3001';
 const PLATFORM_NAME = process.env.PLATFORM_NAME || 'פלטפורמת משחקי שחמט מקוונת';
 const verificationSessions = new Map();
+const DEMO_USER_EMAILS = new Set([
+    'avi1@example.com',
+    'roi2@example.com',
+    'mia3@example.com',
+    'yoav4@example.com',
+    'noa5@example.com'
+]);
 
 function getMailer() {
     const hasPlaceholderCredentials = [
@@ -294,12 +301,15 @@ router.post('/login', async (req, res) => {
 
     try {
         const row = await dbGet(
-            `SELECT u.id, u.account_number, u.full_name, u.password_hash, u.email_verified,
+            `SELECT u.id, u.account_number, u.full_name, u.email, u.password_hash, u.email_verified,
                     u.show_full_name, r.rating, r.games_played, r.wins, r.losses
              FROM users u LEFT JOIN ratings r ON u.id = r.user_id
              WHERE u.account_number = ?`, [accountNumber]
         );
         if (!row || !(await verifyPassword(password, row.password_hash))) {
+            return res.status(401).json({ error: 'שם המשתמש או הסיסמה שגויים' });
+        }
+        if (process.env.SEED_DEMO_USERS !== 'true' && DEMO_USER_EMAILS.has(String(row.email || '').toLowerCase())) {
             return res.status(401).json({ error: 'שם המשתמש או הסיסמה שגויים' });
         }
         if (!row.email_verified) return res.status(403).json({ error: 'יש לאמת את החשבון דרך המייל לפני הכניסה' });

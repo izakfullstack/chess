@@ -260,6 +260,9 @@ router.post('/login', async (req, res) => {
             || typeof req.body.password !== 'string' || req.body.password.length < 1 || req.body.password.length > 128) {
             return res.status(400).json({ error: 'שם המשתמש או הסיסמה אינם תקינים' });
         }
+        if (req.body.username === 'admin' && ADMIN_USERNAME !== 'admin') {
+            return res.status(401).json({ error: 'שם המשתמש או הסיסמה שגויים' });
+        }
         const admin = await dbGet('SELECT * FROM admin_users WHERE username = ?', [req.body.username]);
         if (!admin || !(await verifyPassword(req.body.password || '', admin.password_hash))) {
             return res.status(401).json({ error: 'שם המשתמש או הסיסמה שגויים' });
