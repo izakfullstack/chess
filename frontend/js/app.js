@@ -132,9 +132,62 @@ function restoreLastScreen() {
 }
 
 /**
+ * מוסיף אסימון ההתחברות באופן אוטמטי לכל בקשת API.
+ *
+ * ── למה כך ולא להעביר כל קריאה ל-apiRequest ידנית? ──────────────────────
+ * ב-app.js יש כ-16 קריאות fetch בארבעה תבניות שונים (חלקן עם response.json(),
+ * חלקן בודקות response.ok, וכו'). שכתוב כל אחת ידנית היה כנראה להכניס
+ * את השגיאות - ובמקרה כזה כל בקשה הייתה מוחזרת כ-401 והמשחק נשבר.
+ *
+ * במקום זה נעטפת פונקציית fetch המובנית פעם אחת בעת עליית הדף. כך כל
+ * קריאה קיימת (וגם כל קריאה עתידית) נושאת אסימון, בלי לגעת בקוד הקיים.
+ *
+ * ── מה לא נוגעים בזה ──────────────────────────────────────────────────
+ *   - בקשות ל-/api/admin/... משתמשות באסימון הניהול (adminRequest), לא בזה.
+ *   - כותרות שכבר נקבעו ידנית לא נדרסים - כך adminRequest לא ייפגע.
+ *   - כתבי URL שאינם /api/ לא מושפעים כלל.
+ */
+function installApiAuthInterceptor() {
+    const nativeFetch = window.fetch.bind(window);
+
+    window.fetch = function (url, options = {}) {
+        const isApiCall = String(url).startsWith('/api/');
+        const isAdminCall = String(url).startsWith('/api/admin/');
+
+        if (!isApiCall || isAdminCall) {
+            return nativeFetch(url, options);
+        }
+
+        const headers = options.headers || {};
+        // כותרת קיימת = המפתח עצמו הוסיף אסימון במכוון (למשל adminRequest)
+        const alreadyAuthorized = Object.keys(headers).some(
+            key => key.toLowerCase() === 'authorization'
+        );
+
+        if (alreadyAuthorized) {
+            return nativeFetch(url, options);
+        }
+
+        const token = localStorage.getItem('chess_session_token');
+        if (!token) {
+            return nativeFetch(url, options);
+        }
+
+        return nativeFetch(url, {
+            ...options,
+            headers: { ...headers, Authorization: `Bearer ${token}` }
+        });
+    };
+}
+
+/**
  * אתחול היישום
  */
 function initApp() {
+    // טעינת האסימון לפני כל בקשת API - חייב להיות הראשון כדי שכל
+    // הקריאות הבאות יישארו מוגנות.
+    installApiAuthInterceptor();
+
     // אתחול מודול אימות
     auth.initAuth();
 
@@ -687,43 +740,6 @@ function setupAdminEvents() {
     }));
     document.getElementById('analytics-range')?.addEventListener('change', loadAdminAnalytics);
     document.getElementById('refresh-admin-users')?.addEventListener('click', loadAdminUsers);
-}
-
-/**
- * משלח בקשת API עם אסימון ההתחברות של המשתמש.
- *
- * כל בקשה לשרת חייבת לשלוח Authorization: Bearer <token>.
- * השרת מאמת מהאסימון הזה מי המשתמש - ולכן אי אפשר לזיות זהות
- * ע"י שליחת מספר חשבון אחר של מישהו.
- *
- * ב-401 (האסימון פג או אינו תקין) המשתמש מנותק מהמערכת ומוחזר למסך ההתחברות.
- */
-function apiRequest(url, options = {}) {
-    const token = localStorage.getItem('chess_session_token');
-
-    return fetch(url, {
-        ...options,
-        headers: {
-            ...(options.headers || {}),
-            Authorization: `Bearer ${token || ''}`
-        }
-    }).then(async response => {
-        let data = {};
-        try { data = await response.json(); } catch (e) { /* ללא גוף JSON */ }
-
-        if (response.status === 401 && token) {
-            // האסימון אינו תקין יותר - ניקוי וחזרה למסך ההתחברות.
-            localStorage.removeItem('chess_session_token');
-            if (typeof auth !== 'undefined' && auth.clearSession) auth.clearSession();
-            if (typeof showScreen === 'function') showScreen('login');
-            throw new Error(data.error || 'ההתחברות פגה - נא להתחבר מחדש');
-        }
-
-        if (!response.ok) {
-            throw new Error(data.error || `שגיאת שרת (${response.status})`);
-        }
-        return data;
-    });
 }
 
 function adminRequest(url, options = {}) {
