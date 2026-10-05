@@ -852,7 +852,7 @@ input[readonly] {
 .board-with-captures .chess-board-stage {
     top: 0 !important;
     width: 100%;
-    max-width: 42rem;
+    max-width: 64rem;
 }
 
 
