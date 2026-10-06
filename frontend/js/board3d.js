@@ -48,7 +48,6 @@ const TARGET_HEIGHT = {
 const PIECES_BASE = '/assets/pieces3d/';
 const CANVAS_OVERSCAN = 1.5;
 const THUMBNAIL_SIZE = 128;
-const KNIGHT_INWARD_TURN = Math.PI / 18;
 
 /** גובה משטח הסימון השקוף שמונח על גבי הלוח (לצביע משבצת). */
 const OVERLAY_Y = 0.006;
@@ -522,10 +521,7 @@ export function sync(board) {
             // השחור וסוסי הלבן מסובבים 180° כדי שיפנו אל מרכז הלוח.
             const type = normalizePieceType(cell.type);
             if (type === 'knight') {
-                const sideDirection = col < 3.5 ? 1 : -1;
-                const colorDirection = cell.color === 'white' ? -1 : 1;
-                mesh.rotation.y = (cell.color === 'black' ? Math.PI : 0)
-                    + sideDirection * colorDirection * KNIGHT_INWARD_TURN;
+                mesh.rotation.y = Math.atan2(pos.x, pos.z);
             } else {
                 mesh.rotation.y = cell.color === 'black' ? Math.PI : 0;
             }
