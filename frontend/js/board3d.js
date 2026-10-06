@@ -947,15 +947,17 @@ export function isTablePoint(clientX, clientY) {
 
 function updateCamera() {
     if (!state.camera) return;
-    // הלוח הגדול (עד 64rem) ממלא את המסך: מצלמה קרובה יותר ונמוכה יותר.
-    const height = 6.6;
+    // מיקום ברירת המחדל מעט מעל מרכז הפריים.
+    const targetY = -0.3;
+    const height = 6.6 + targetY;
     const distance = state.flipped ? -8.8 : 8.8;
     state.camera.position.set(0, height, distance);
+    const target = new state.three.Vector3(0, targetY, 0);
     if (state.controls) {
-        state.controls.target.set(0, 0, 0);
+        state.controls.target.copy(target);
         state.controls.update();
     }
-    state.camera.lookAt(0, 0, 0);
+    state.camera.lookAt(target);
     state.cameraApplied = true;
 }
 
