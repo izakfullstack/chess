@@ -215,9 +215,12 @@ function renderCapturedPieces() {
     const PIECE_ORDER = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
 
     // קיבוץ הכלים שנאכלו לפי סוג וצבע, כדי להציג קבוצה שלמה בשורה אחת
+    const allCapturedPieces = [...captured.white, ...captured.black];
     const groupByType = color => {
         const groups = {};
-        captured[color].forEach(piece => {
+        allCapturedPieces
+            .filter(piece => piece.color === color)
+            .forEach(piece => {
             const type = normalizePieceType(piece.type);
             (groups[type] = groups[type] || []).push(piece.color);
         });
