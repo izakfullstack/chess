@@ -242,7 +242,7 @@ function setupGlobalEvents() {
     document.getElementById('back-from-admin-login')?.addEventListener('click', goBack);
     document.getElementById('back-from-admin')?.addEventListener('click', goBack);
     document.getElementById('profile-settings')?.addEventListener('click', () => {
-        document.getElementById('profile-menu')?.classList.add('hidden');
+        setProfileMenuOpen(false);
         if (auth.requireAuth('יש להתחבר כדי לפתוח הגדרות חשבון')) {
             showScreen('account-settings');
         }
@@ -270,8 +270,8 @@ function setupGlobalEvents() {
     document.getElementById('close-sent-invitation')?.addEventListener('click', () => {
         document.getElementById('sent-invitation-dialog')?.classList.add('hidden');
     });
-    document.getElementById('opponent-resignation-leave')?.addEventListener('click', () => {
-        document.getElementById('opponent-resignation-dialog')?.classList.add('hidden');
+    document.getElementById('game-victory-leave')?.addEventListener('click', () => {
+        document.getElementById('game-victory-dialog')?.classList.add('hidden');
         opponentResignationNoticeShown = false;
         goBack();
     });
@@ -585,7 +585,7 @@ function startGamePolling(gameId, immediately = false) {
                 && latest.winnerId != null && String(latest.winnerId) === String(auth.currentUser?.id)
                 && !opponentResignationNoticeShown) {
                 opponentResignationNoticeShown = true;
-                showOpponentResignationNotice();
+                showGameVictoryNotice();
             }
             if (latest.status !== 'active') stopGamePolling();
         } catch (error) {
@@ -602,8 +602,8 @@ function startGamePolling(gameId, immediately = false) {
     gamePollTimer = setTimeout(poll, immediately ? 0 : 2500);
 }
 
-function showOpponentResignationNotice() {
-    const dialog = document.getElementById('opponent-resignation-dialog');
+function showGameVictoryNotice() {
+    const dialog = document.getElementById('game-victory-dialog');
     if (!dialog) return;
     dialog.classList.remove('hidden');
 }

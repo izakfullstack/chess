@@ -2190,6 +2190,27 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
     background: #ffffff;
 }
 
+.profile-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #38291d;
+    cursor: default;
+}
+
+body.profile-menu-open {
+    user-select: none;
+}
+
+body.profile-menu-open .site-header {
+    z-index: calc(var(--z-modal) + 1);
+}
+
 .profile-menu {
     position: absolute;
     top: calc(100% + 0.45rem);
@@ -3039,6 +3060,31 @@ body.game-screen-active .site-header {
     inset: 0 0 auto;
     width: 100%;
     z-index: var(--z-popover);
+}
+
+body.game-screen-active.profile-menu-open .site-header {
+    z-index: calc(var(--z-modal) + 1);
+}
+
+body.game-screen-active .game-message.check-notice {
+    position: fixed;
+    top: 6.3rem;
+    left: 50%;
+    z-index: 2147483200;
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+    margin: 0;
+    padding: 0.55rem 1.2rem;
+    transform: translateX(-50%);
+    border: 1px solid #d7b071;
+    border-radius: 0.55rem;
+    background: #6b4328;
+    box-shadow: 0 0.3rem 0.9rem rgba(0, 0, 0, 0.35);
+    color: #fff7e6;
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-align: center;
+    pointer-events: none;
 }
 
 body.game-screen-active .site-header,

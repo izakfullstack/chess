@@ -145,20 +145,26 @@ function setupAuthEvents() {
     if (profileButton) {
         profileButton.addEventListener('click', (event) => {
             event.stopPropagation();
-            document.getElementById('profile-menu').classList.toggle('hidden');
+            setProfileMenuOpen(document.getElementById('profile-menu').classList.contains('hidden'));
         });
     }
 
     document.getElementById('profile-history')?.addEventListener('click', () => {
         if (currentUser && typeof openPlayerHistory === 'function') openPlayerHistory(currentUser.accountNumber);
-        document.getElementById('profile-menu').classList.add('hidden');
+        setProfileMenuOpen(false);
     });
 
+    document.getElementById('profile-menu-backdrop')?.addEventListener('click', () => setProfileMenuOpen(false));
     document.addEventListener('click', (event) => {
         const profileMenu = document.getElementById('profile-menu');
         const profileButton = document.getElementById('profile-open');
         if (profileMenu && profileButton && !profileMenu.contains(event.target) && !profileButton.contains(event.target)) {
-            profileMenu.classList.add('hidden');
+            setProfileMenuOpen(false);
+        }
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !document.getElementById('profile-menu')?.classList.contains('hidden')) {
+            setProfileMenuOpen(false);
         }
     });
 
@@ -166,6 +172,24 @@ function setupAuthEvents() {
     if (authSwitch) authSwitch.addEventListener('click', () => setAuthMode(authMode === 'register' ? 'login' : 'register'));
 
     document.getElementById('admin-login-form')?.addEventListener('submit', handleAdminLogin);
+}
+
+function setProfileMenuOpen(isOpen) {
+    const menu = document.getElementById('profile-menu');
+    const trigger = document.getElementById('profile-open');
+    const wasOpen = Boolean(menu && !menu.classList.contains('hidden'));
+    if (!menu) return;
+
+    menu.classList.toggle('hidden', !isOpen);
+    document.getElementById('profile-menu-backdrop')?.classList.toggle('hidden', !isOpen);
+    document.body.classList.toggle('profile-menu-open', isOpen);
+    trigger?.setAttribute('aria-expanded', String(isOpen));
+
+    if (isOpen && !wasOpen) {
+        document.getElementById('profile-settings')?.focus();
+    } else if (!isOpen && wasOpen) {
+        trigger?.focus();
+    }
 }
 
 /**
@@ -425,7 +449,7 @@ function updateUIForUser() {
         loginBtn.classList.remove('hidden');
         registerBtn.classList.remove('hidden');
         document.getElementById('connected-account').classList.add('hidden');
-        document.getElementById('profile-menu').classList.add('hidden');
+        setProfileMenuOpen(false);
     }
 }
 

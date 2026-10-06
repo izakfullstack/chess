@@ -81,6 +81,7 @@ const state = {
     selected: null,
     legalMoves: [],
     lastMove: null,
+    checkSquare: null,
     flipped: false,
     animating: false,
     onSelect: null,
@@ -190,7 +191,38 @@ function buildFallbackBoard() {
     const group = new THREE.Group();
     group.name = 'fallback-board';
 
-    // 64 משבצות מוצגות ללא קופסת מסגרת אטומה שמסתירה את שולי הלוח.
+    const woodMaterial = new THREE.MeshStandardMaterial({
+        color: 0x57371f,
+        roughness: 0.68,
+        metalness: 0,
+    });
+    const goldMaterial = new THREE.MeshStandardMaterial({
+        color: 0xc49a42,
+        roughness: 0.34,
+        metalness: 0.58,
+    });
+    const base = new THREE.Mesh(new THREE.BoxGeometry(8.9, 0.1, 8.9), woodMaterial);
+    base.position.set(0, -0.11, 0);
+    base.receiveShadow = true;
+    group.add(base);
+
+    const addTrim = (width, length, x, z, material) => {
+        const trim = new THREE.Mesh(new THREE.BoxGeometry(width, 0.035, length), material);
+        trim.position.set(x, -0.0175, z);
+        trim.receiveShadow = true;
+        group.add(trim);
+    };
+    const frameWidth = 0.395;
+    const frameOffset = 4 + 0.055 + frameWidth / 2;
+    addTrim(8, 0.055, 0, -4.0275, goldMaterial);
+    addTrim(8, 0.055, 0, 4.0275, goldMaterial);
+    addTrim(0.055, 8, -4.0275, 0, goldMaterial);
+    addTrim(0.055, 8, 4.0275, 0, goldMaterial);
+    addTrim(8.9, frameWidth, 0, -frameOffset, woodMaterial);
+    addTrim(8.9, frameWidth, 0, frameOffset, woodMaterial);
+    addTrim(frameWidth, 8.11, -frameOffset, 0, woodMaterial);
+    addTrim(frameWidth, 8.11, frameOffset, 0, woodMaterial);
+
     for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
             const isLight = (row + col) % 2 === 0;
@@ -521,7 +553,10 @@ export function sync(board) {
             // סיבוב הסוס מחושב מהמשבצת אל מרכז הלוח; שאר הכלים פונים ליריב.
             const type = normalizePieceType(cell.type);
             if (type === 'knight') {
-                mesh.rotation.y = Math.atan2(pos.x, pos.z);
+                const inwardRotation = Math.atan2(pos.x, pos.z);
+                mesh.rotation.y = cell.color === 'white'
+                    ? inwardRotation + Math.PI
+                    : inwardRotation;
             } else {
                 mesh.rotation.y = cell.color === 'black' ? Math.PI : 0;
             }
@@ -535,11 +570,12 @@ export function sync(board) {
 }
 
 /** צוב סימוני המשבצות לפי הבחירה, המהלכים החוקיים והמהלך האחרון. */
-export function setMarks({ selected, legalMoves, lastMove } = {}) {
+export function setMarks({ selected, legalMoves, lastMove, checkSquare } = {}) {
     if (!state.ready) return;
     state.selected = selected || null;
     state.legalMoves = Array.isArray(legalMoves) ? legalMoves : [];
     state.lastMove = lastMove || null;
+    state.checkSquare = checkSquare || null;
     paintSquares();
 }
 
@@ -569,6 +605,9 @@ function paintSquares() {
         }
         if (state.selected && state.selected.row === row && state.selected.col === col) {
             color = COLOR_SELECTED;
+        }
+        if (state.checkSquare?.row === row && state.checkSquare?.col === col) {
+            color = COLOR_CAPTURE;
         }
 
         // השכבה שקופה: צביעה מרובה (blending) על גבי הלוח.

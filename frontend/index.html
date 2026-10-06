@@ -69,11 +69,11 @@
                 <button id="login-open" class="btn btn-primary public-auth-control">התחבר</button>
                 <button id="register-open" class="btn btn-secondary public-auth-control">הירשם</button>
                 <div id="connected-account" class="connected-account hidden">
-                    <button id="profile-open" class="profile-button" type="button" aria-label="פרופיל משתמש"><span id="profile-initials">00</span></button>
+                    <button id="profile-open" class="profile-button" type="button" aria-label="פרופיל משתמש" aria-expanded="false" aria-controls="profile-menu"><span id="profile-initials">00</span></button>
                     <button id="logout" class="btn btn-danger" type="button">התנתק</button>
-                    <div id="profile-menu" class="profile-menu hidden" role="dialog" aria-label="פרופיל אישי">
+                    <div id="profile-menu" class="profile-menu hidden" role="dialog" aria-modal="true" aria-labelledby="profile-menu-heading">
                         <button id="profile-settings" class="profile-settings" type="button" aria-label="הגדרות"><span aria-hidden="true"></span></button>
-                        <h3>פרופיל אישי</h3>
+                        <h3 id="profile-menu-heading">פרופיל אישי</h3>
                         <div class="personal-rating-card">
                             <div class="rating-circle"><span id="profile-menu-rating">1200</span><small>ניקוד</small></div>
                             <div class="rating-details">
@@ -93,6 +93,7 @@
             </div>
         </div>
     </header>
+    <button id="profile-menu-backdrop" class="profile-menu-backdrop hidden" type="button" aria-label="סגירת תפריט הפרופיל"></button>
 
     <main class="main-content">
         <!-- Home Screen -->
@@ -475,12 +476,12 @@
         </div>
     </div>
 
-    <div id="opponent-resignation-dialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="opponent-resignation-title">
+    <div id="game-victory-dialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="game-victory-title">
         <div class="invitation-dialog panel">
-            <h2 id="opponent-resignation-title">היריב החליט לצאת מהמשחק</h2>
-            <p>היריב בחר לצאת במהלך המשחק, ולכן הצבת נחשבת לניצחון עבורך.</p>
+            <h2 id="game-victory-title">מזל טוב, ניצחת במשחק השחמט!</h2>
+            <p><small>תוספת הניקוד מחושבת לפי שיטת Elo: מעגלים את 32 × (1 − צפי הניצחון שלך). צפי הניצחון הוא 1 ÷ (1 + 10<sup>((דירוג היריב − הדירוג שלך) ÷ 400)</sup>), ולכן ניצחון מול יריב מדורג יותר מעניק יותר נקודות.</small></p>
             <div class="dialog-actions">
-                <button id="opponent-resignation-leave" class="btn btn-primary" type="button">צא</button>
+                <button id="game-victory-leave" class="btn btn-primary" type="button">חזור למסך הקודם</button>
             </div>
         </div>
     </div>

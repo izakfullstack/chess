@@ -277,12 +277,27 @@ function renderCapturedPieces() {
     }
 }
 
+let checkNoticeTimer = null;
+let announcedCheckSquare = null;
+
 function renderChessBoard(fen, currentTurn) {
     const board = game.fenToBoard(fen);
     if (!board3d?.isAvailable()) return;
 
     board3d.sync(board);
     board3d.setFlip(shouldFlipBoard());
+
+    const checkSquare = game.isKingInCheck(board, currentTurn)
+        ? board.reduce((found, row, rowIndex) => found || row.reduce((king, piece, colIndex) =>
+            king || (piece?.type === 'king' && piece.color === currentTurn
+                ? { row: rowIndex, col: colIndex }
+                : null), null), null)
+        : null;
+    const checkKey = checkSquare ? `${checkSquare.row},${checkSquare.col}` : null;
+    if (checkKey && checkKey !== announcedCheckSquare) {
+        showCheckNotice();
+    }
+    announcedCheckSquare = checkKey;
 
     const legalMoves = currentGame?.legalMoves || [];
     const targets = selectedSquare
@@ -299,8 +314,23 @@ function renderChessBoard(fen, currentTurn) {
     const lastMove = lastEntry
         ? { from: game.notationToSquare(lastEntry.from), to: game.notationToSquare(lastEntry.to) }
         : null;
-    board3d.setMarks({ selected: selectedSquare, legalMoves: targets, lastMove });
+    board3d.setMarks({ selected: selectedSquare, legalMoves: targets, lastMove, checkSquare });
     renderCapturedPieces();
+}
+
+function showCheckNotice() {
+    const message = document.getElementById('game-message');
+    if (!message) return;
+
+    message.textContent = 'שח';
+    message.className = 'form-message check-notice';
+    clearTimeout(checkNoticeTimer);
+    checkNoticeTimer = setTimeout(() => {
+        if (message.classList.contains('check-notice')) {
+            message.textContent = '';
+            message.className = 'form-message';
+        }
+    }, 2000);
 }
 
 function getPieceTypeName(type) {
