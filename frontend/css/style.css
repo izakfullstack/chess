@@ -1005,9 +1005,14 @@ body.game-screen-active #center-board-global {
 .move-history {
     max-height: 400px;
     overflow-y: auto;
+    scrollbar-width: none;
     background-color: var(--surface);
     border-radius: var(--radius-md);
     padding: var(--spacing-sm);
+}
+
+.move-history::-webkit-scrollbar {
+    display: none;
 }
 
 body.game-screen-active .move-history:not([hidden]) {

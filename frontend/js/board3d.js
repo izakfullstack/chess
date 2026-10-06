@@ -374,8 +374,8 @@ function buildPieceThumbnails() {
     scene.add(keyLight);
 
     const camera = new THREE.OrthographicCamera(-0.72, 0.72, 0.72, -0.72, 0.1, 20);
-    camera.position.set(3.2, 3.2, 4.2);
-    camera.lookAt(0, 0.35, 0);
+    camera.position.set(0, 1.8, 6);
+    camera.lookAt(0, 0.55, 0);
 
     COLORS.forEach(color => PIECE_TYPES.forEach(type => {
         const model = state.models.get(`${color}-${type}`);
