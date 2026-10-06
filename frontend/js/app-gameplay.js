@@ -112,7 +112,7 @@ function updateMoveHistory(moveHistory) {
                     <span class="move-piece">${getPieceSymbol(move.piece, move.color)}</span>
                     <span class="move-to">${move.to}</span>
                 </span>
-                <span class="move-color ${move.color}">${move.color === 'white' ? 'לבן' : 'שחור'}</span>
+                <span class="move-color ${move.color}" role="img" aria-label="${move.color === 'white' ? 'מהלך של הלבן' : 'מהלך של השחור'}"></span>
             </div>
         `;
     }).join('');

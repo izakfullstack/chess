@@ -232,7 +232,7 @@ function renderCapturedPieces() {
     scale.innerHTML = '';
     const header = document.createElement('div');
     header.className = 'material-scale-header';
-    header.innerHTML = '<span class="white">לבן</span><span class="black">שחור</span>';
+    header.innerHTML = '<span class="move-color white" role="img" aria-label="כלים לבנים"></span><span class="move-color black" role="img" aria-label="כלים שחורים"></span>';
     scale.appendChild(header);
 
     PIECE_ORDER.forEach(type => {
@@ -350,7 +350,7 @@ function setupBoard3D() {
     if (!host) return;
     host.classList.add('board3d-loading');
 
-    board3dReadyPromise = import('./board3d.js?v=20261006-upright-captures')
+    board3dReadyPromise = import('./board3d.js?v=20261006-move-dots')
         .then(async module => {
             const ready = await module.init(host, progress => {
                 board3dProgress = { ...progress, complete: false };

@@ -759,14 +759,13 @@ input[readonly] {
     min-width: 0;
 }
 
-.material-scale-header .white {
-    color: #ffffff;
-    text-shadow: 0 1px 3px #000000;
+.material-scale-header {
+    justify-content: space-around;
+    min-height: 0.65rem;
 }
 
-.material-scale-header .black {
-    color: #17120f;
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.55);
+.material-scale-header .move-color {
+    flex: 0 0 0.55rem;
 }
 
 .material-scale:empty {
@@ -1028,7 +1027,10 @@ body.game-screen-active .move-history:not([hidden]) {
     padding: 0.35rem;
     font-size: 0.75rem;
     background: transparent;
-    pointer-events: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    pointer-events: auto;
 }
 
 .move-history-item {
@@ -1090,20 +1092,25 @@ body.game-screen-active .move-history .move-details {
 }
 
 .move-color {
-    font-size: var(--font-size-xs);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--radius-sm);
-    background-color: var(--surface);
+    display: inline-block;
+    flex: 0 0 0.55rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, 0.65);
+    border-radius: 50%;
+    background-color: #181411;
+    box-sizing: border-box;
 }
 
 .move-color.white {
-    background-color: var(--chess-light-square);
-    color: var(--chess-dark-square);
+    border-color: #d8d0c5;
+    background-color: #ffffff;
 }
 
 .move-color.black {
-    background-color: var(--chess-dark-square);
-    color: var(--chess-light-square);
+    border-color: #080706;
+    background-color: #181411;
 }
 
 /* Ranking table */
