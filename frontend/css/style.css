@@ -1074,6 +1074,7 @@ body.game-screen-active .move-history .move-details {
 
 body.game-screen-active .move-history .move-color {
     margin-inline-start: 0.3rem;
+    transform: translateX(-2px);
 }
 
 .move-number {

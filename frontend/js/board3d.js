@@ -293,9 +293,9 @@ function buildFallbackBoard() {
         const rank = String(8 - index);
         const coordinate = index - 3.5;
         addCoordinate(file, coordinate, frameOffset, Math.PI, true);
-        addCoordinate(file, coordinate, -frameOffset, 0);
+        addCoordinate(file, coordinate, -frameOffset, 0, true);
         addCoordinate(rank, -frameOffset, coordinate, Math.PI, true);
-        addCoordinate(rank, frameOffset, coordinate, 0);
+        addCoordinate(rank, frameOffset, coordinate, 0, true);
     }
 
     for (let row = 0; row < 8; row++) {
@@ -628,7 +628,7 @@ export function sync(board) {
             // הסוסים פונים בעיקר ליריב, עם סטייה קלה לכיוון מרכז הלוח.
             const type = normalizePieceType(cell.type);
             if (type === 'knight') {
-                const inwardRotation = Math.sign(pos.x) * KNIGHT_INWARD_ANGLE;
+                const inwardRotation = -Math.sign(pos.x) * KNIGHT_INWARD_ANGLE;
                 mesh.rotation.y = inwardRotation + Math.PI;
             } else {
                 mesh.rotation.y = cell.color === 'black' ? Math.PI : 0;
