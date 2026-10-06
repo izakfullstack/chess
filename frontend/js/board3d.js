@@ -518,7 +518,7 @@ export function sync(board) {
             if (!mesh) continue;
             const pos = squarePosition(row, col);
             mesh.position.set(pos.x, pos.y, pos.z);
-            // השחור וסוסי הלבן מסובבים 180° כדי שיפנו אל מרכז הלוח.
+            // סיבוב הסוס מחושב מהמשבצת אל מרכז הלוח; שאר הכלים פונים ליריב.
             const type = normalizePieceType(cell.type);
             if (type === 'knight') {
                 mesh.rotation.y = Math.atan2(pos.x, pos.z);
