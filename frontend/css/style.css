@@ -2193,7 +2193,7 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
 .profile-menu-backdrop {
     position: fixed;
     inset: 0;
-    z-index: var(--z-modal);
+    z-index: 2147483300;
     width: 100%;
     height: 100%;
     padding: 0;
@@ -2208,9 +2208,16 @@ body.profile-menu-open {
 }
 
 body.profile-menu-open .site-header {
-    z-index: calc(var(--z-modal) + 1);
+    z-index: 2147483400;
     background: transparent;
     pointer-events: none;
+}
+
+body.profile-menu-open .site-header .mobile-menu {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
 }
 
 body.profile-menu-open .site-header .profile-button,
@@ -3077,7 +3084,7 @@ body.game-screen-active .site-header {
 }
 
 body.game-screen-active.profile-menu-open .site-header {
-    z-index: calc(var(--z-modal) + 1);
+    z-index: 2147483400;
 }
 
 body.game-screen-active #game-message.check-notice {
