@@ -660,7 +660,8 @@ export function sync(board) {
             // הסוסים פונים בעיקר ליריב, עם סטייה קלה לכיוון מרכז הלוח.
             const type = normalizePieceType(cell.type);
             if (type === 'knight') {
-                const inwardRotation = -Math.sign(pos.x) * KNIGHT_INWARD_ANGLE;
+                const inwardDirection = cell.color === 'white' ? 1 : -1;
+                const inwardRotation = inwardDirection * Math.sign(pos.x) * KNIGHT_INWARD_ANGLE;
                 mesh.rotation.y = inwardRotation + Math.PI;
             } else {
                 mesh.rotation.y = cell.color === 'black' ? Math.PI : 0;

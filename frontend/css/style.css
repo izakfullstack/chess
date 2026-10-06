@@ -137,8 +137,9 @@ p {
     background: rgba(23, 16, 12, 0.45);
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     padding: 0.9rem 0;
-    position: sticky;
-    top: 0;
+    position: fixed;
+    inset: 0 0 auto;
+    width: 100%;
     z-index: var(--z-fixed);
 }
 
@@ -295,6 +296,10 @@ p {
     margin: 0 auto;
     padding: clamp(1rem, 3vw, 2rem) 0;
     flex: 1;
+}
+
+body:not(.admin-mode):not(.game-screen-active):not(:has(.account-settings-screen.active)) .main-content {
+    margin-top: 4.5rem;
 }
 
 /* Screens */
@@ -2944,11 +2949,15 @@ body:has(.account-settings-screen.active) .site-header {
 /* הלוח הצף לא נחתך על ידי גבולות התוכן של מסך המשחק. */
 html:has(#screen-game.active),
 body:has(#screen-game.active) {
-    overflow: visible;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
 }
 
 html:has(#screen-game.active),
 body.game-screen-active {
+    height: 100dvh;
+    overflow: hidden;
     background: radial-gradient(
         circle at center,
         rgba(0, 0, 0, 0) 38%,
@@ -3030,7 +3039,8 @@ body.game-screen-active {
 body.game-screen-active .main-content {
     width: min(100% - 2rem, 1200px);
     max-width: 1200px;
-    padding-top: 4.5rem;
+    height: 100%;
+    padding-top: 0;
 }
 
 body.game-screen-active #screen-game {
@@ -3054,15 +3064,14 @@ body.game-screen-active #screen-game::after {
 
 /* כותרת המסך מעל הלוח, כדי שלוחצה על "חזור" תמיד תגיע לכפתור ולא ללוח */
 body.game-screen-active #screen-game > .section-header {
-    position: relative;
+    position: fixed;
+    top: 0.75rem;
+    right: 1rem;
     z-index: 1300;
 }
 
 body.game-screen-active .site-header {
-    position: fixed;
-    inset: 0 0 auto;
-    width: 100%;
-    z-index: 1301;
+    display: none;
 }
 
 body.game-screen-active.profile-menu-open .site-header {
