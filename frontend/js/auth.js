@@ -167,6 +167,7 @@ function setupAuthEvents() {
             setProfileMenuOpen(false);
         }
     });
+    window.addEventListener('resize', syncProfileMenuShield);
 
     const authSwitch = document.getElementById('auth-switch');
     if (authSwitch) authSwitch.addEventListener('click', () => setAuthMode(authMode === 'register' ? 'login' : 'register'));
@@ -181,15 +182,33 @@ function setProfileMenuOpen(isOpen) {
     if (!menu) return;
 
     menu.classList.toggle('hidden', !isOpen);
-    document.getElementById('profile-menu-backdrop')?.classList.toggle('hidden', !isOpen);
+    const shield = document.getElementById('profile-menu-backdrop');
+    shield?.classList.toggle('hidden', !isOpen);
     document.body.classList.toggle('profile-menu-open', isOpen);
     trigger?.setAttribute('aria-expanded', String(isOpen));
 
     if (isOpen && !wasOpen) {
+        syncProfileMenuShield();
         document.getElementById('profile-settings')?.focus();
     } else if (!isOpen && wasOpen) {
+        if (shield) {
+            shield.style.width = '0';
+            shield.style.height = '0';
+        }
         trigger?.focus();
     }
+}
+
+function syncProfileMenuShield() {
+    const menu = document.getElementById('profile-menu');
+    const shield = document.getElementById('profile-menu-backdrop');
+    if (!menu || !shield || menu.classList.contains('hidden')) return;
+
+    const { left, top, width, height } = menu.getBoundingClientRect();
+    shield.style.left = `${left}px`;
+    shield.style.top = `${top}px`;
+    shield.style.width = `${width}px`;
+    shield.style.height = `${height}px`;
 }
 
 /**

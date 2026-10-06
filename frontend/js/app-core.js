@@ -340,6 +340,7 @@ function goBack(fallback = lastNonGameScreen || 'home') {
     // נפתח אוטומטית ממעקב הזמנות) - משתמשים במסך המקור שנשמר בזיכרון הקבוע,
     // כדי שכפתור "חזור" לא יקפוץ בטעות לדף הראשי.
     let previousScreen = getPreviousScreen(fallback);
+    const leavingGame = currentScreen === 'game';
     if (currentScreen === 'game') {
         const entryKey = getUserStateKey('game_entry_screen');
         const entryScreen = entryKey ? localStorage.getItem(entryKey) : null;
@@ -358,6 +359,10 @@ function goBack(fallback = lastNonGameScreen || 'home') {
     }
     if (screenHistory[screenHistory.length - 1] === previousScreen) screenHistory.pop();
     applyScreen(previousScreen);
+    if (leavingGame && previousScreen !== 'game') {
+        gameEntryScreen = null;
+        gameEntryHistory = null;
+    }
 }
 
 /**
@@ -368,7 +373,6 @@ function applyScreen(screenName) {
     if (screenName !== 'game') {
         stopGamePolling();
         if (currentGame) clearPersistedGameState();
-        gameEntryScreen = null;
         document.getElementById('game-loading')?.classList.add('hidden');
     }
 

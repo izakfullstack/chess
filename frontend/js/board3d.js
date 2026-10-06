@@ -202,7 +202,7 @@ function buildFallbackBoard() {
         roughness: 0.34,
         metalness: 0.58,
     });
-    const base = new THREE.Mesh(new THREE.BoxGeometry(8.9, 0.1, 8.9), woodMaterial);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(9.3, 0.1, 9.3), woodMaterial);
     base.position.set(0, -0.11, 0);
     base.receiveShadow = true;
     group.add(base);
@@ -213,16 +213,57 @@ function buildFallbackBoard() {
         trim.receiveShadow = true;
         group.add(trim);
     };
-    const frameWidth = 0.395;
+    const frameWidth = 0.52;
     const frameOffset = 4 + 0.055 + frameWidth / 2;
-    addTrim(8, 0.055, 0, -4.0275, goldMaterial);
-    addTrim(8, 0.055, 0, 4.0275, goldMaterial);
-    addTrim(0.055, 8, -4.0275, 0, goldMaterial);
-    addTrim(0.055, 8, 4.0275, 0, goldMaterial);
-    addTrim(8.9, frameWidth, 0, -frameOffset, woodMaterial);
-    addTrim(8.9, frameWidth, 0, frameOffset, woodMaterial);
+    addTrim(8.11, 0.055, 0, -4.0275, goldMaterial);
+    addTrim(8.11, 0.055, 0, 4.0275, goldMaterial);
+    addTrim(0.055, 8.11, -4.0275, 0, goldMaterial);
+    addTrim(0.055, 8.11, 4.0275, 0, goldMaterial);
+    addTrim(9.3, frameWidth, 0, -frameOffset, woodMaterial);
+    addTrim(9.3, frameWidth, 0, frameOffset, woodMaterial);
     addTrim(frameWidth, 8.11, -frameOffset, 0, woodMaterial);
     addTrim(frameWidth, 8.11, frameOffset, 0, woodMaterial);
+
+    const addCoordinate = (label, x, z, rotationY) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('לא ניתן ליצור סימוני קואורדינטות ללוח.');
+        context.clearRect(0, 0, 128, 128);
+        context.fillStyle = '#f2dfbd';
+        context.font = 'bold 76px Georgia, serif';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.shadowColor = 'rgba(35, 19, 9, 0.8)';
+        context.shadowBlur = 5;
+        context.fillText(label, 64, 68);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+        });
+        const marker = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.2), material);
+        marker.rotation.x = -Math.PI / 2;
+        marker.rotation.y = rotationY;
+        marker.position.set(x, 0.003, z);
+        marker.renderOrder = 2;
+        group.add(marker);
+    };
+
+    for (let index = 0; index < 8; index++) {
+        const file = String.fromCharCode(97 + index);
+        const rank = String(8 - index);
+        const coordinate = index - 3.5;
+        addCoordinate(file, coordinate, frameOffset, Math.PI);
+        addCoordinate(String.fromCharCode(104 - index), coordinate, -frameOffset, 0);
+        addCoordinate(rank, -frameOffset, coordinate, Math.PI / 2);
+        addCoordinate(String(1 + index), frameOffset, coordinate, -Math.PI / 2);
+    }
 
     for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {

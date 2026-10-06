@@ -928,7 +928,7 @@ input[readonly] {
 body.game-screen-active .game-controls {
     position: fixed;
     left: 50%;
-    bottom: 1rem;
+    bottom: 0.4rem;
     z-index: 2147482500;
     width: max-content;
     max-width: calc(100vw - 2rem);
@@ -1049,6 +1049,7 @@ body.game-screen-active .move-history:not([hidden]) {
 }
 
 body.game-screen-active .move-history-item {
+    justify-content: flex-start;
     gap: 0.15rem;
     padding: 0.3rem 0.2rem;
     margin-bottom: 0.2rem;
@@ -1067,7 +1068,8 @@ body.game-screen-active .move-history .move-number {
 
 body.game-screen-active .move-history .move-details {
     min-width: 0;
-    margin: 0 0.15rem;
+    flex: 0 1 auto;
+    margin: 0;
 }
 
 .move-number {
@@ -2192,44 +2194,26 @@ body:has(#connected-account:not(.hidden)) .header-right .nav-button {
 
 .profile-menu-backdrop {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
     z-index: 2147483300;
-    width: 100%;
-    height: 100%;
+    width: 0;
+    height: 0;
     padding: 0;
     border: 0;
     border-radius: 0;
-    background: #38291d;
+    background: transparent;
     cursor: default;
-}
-
-body.profile-menu-open {
-    user-select: none;
 }
 
 body.profile-menu-open .site-header {
     z-index: 2147483400;
-    background: transparent;
     pointer-events: none;
-}
-
-body.profile-menu-open .site-header .mobile-menu {
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
-    backdrop-filter: none;
 }
 
 body.profile-menu-open .site-header .profile-button,
 body.profile-menu-open .site-header .profile-menu {
     pointer-events: auto;
-}
-
-body.profile-menu-open .site-header .mobile-menu-toggle,
-body.profile-menu-open .site-header .header-right,
-body.profile-menu-open .site-header .mobile-menu > :not(.connected-account),
-body.profile-menu-open .site-header .connected-account > :not(#profile-open):not(#profile-menu) {
-    visibility: hidden;
 }
 
 .profile-menu {
