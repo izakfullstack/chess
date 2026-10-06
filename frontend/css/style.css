@@ -3065,8 +3065,8 @@ body.game-screen-active #screen-game::after {
 /* כותרת המסך מעל הלוח, כדי שלוחצה על "חזור" תמיד תגיע לכפתור ולא ללוח */
 body.game-screen-active #screen-game > .section-header {
     position: fixed;
-    top: 0.75rem;
-    right: 1rem;
+    top: 5.5rem;
+    right: max(1rem, calc((100vw - 1200px) / 2 + 1rem));
     z-index: 1300;
 }
 
