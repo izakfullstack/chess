@@ -277,7 +277,7 @@ function buildFallbackBoard() {
         const orient = new THREE.Group();
         orient.position.set(x, 0.004, z);
         orient.rotation.y = rotationY;
-        const marker = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.34), material);
+        const marker = new THREE.Mesh(new THREE.PlaneGeometry(0.48, 0.4), material);
         marker.rotation.x = -Math.PI / 2;
         marker.renderOrder = 2;
         orient.add(marker);
@@ -288,7 +288,7 @@ function buildFallbackBoard() {
         const file = String.fromCharCode(97 + index);
         const rank = String(8 - index);
         const coordinate = index - 3.5;
-        addCoordinate(String.fromCharCode(104 - index), coordinate, frameOffset, Math.PI);
+        addCoordinate(file, coordinate, frameOffset, Math.PI);
         addCoordinate(file, coordinate, -frameOffset, 0);
         addCoordinate(rank, -frameOffset, coordinate, Math.PI);
         addCoordinate(rank, frameOffset, coordinate, 0);
