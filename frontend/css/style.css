@@ -1018,7 +1018,7 @@ body.game-screen-active .move-history:not([hidden]) {
     position: fixed;
     top: 9rem;
     left: 0.75rem;
-    z-index: 1100;
+    z-index: 1300;
     box-sizing: border-box;
     width: clamp(7rem, 15vw, 11rem);
     max-width: calc(100vw - 1.5rem);
