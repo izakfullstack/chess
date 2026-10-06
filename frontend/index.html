@@ -6,13 +6,13 @@
     <title>פלטפורמת תחרויות שחמט</title>
 
     <!-- טעינה מוקדמת: קובצי הליבה נמשכים במקביל ל-HTML ולא בסדרה -->
-    <link rel="preload" href="/css/style.css?v=20261005-board3d-big" as="style">
-    <link rel="stylesheet" href="/css/style.css?v=20261005-board3d-big">
+    <link rel="preload" href="/css/style.css?v=20261006-atomic-game-load" as="style">
+    <link rel="stylesheet" href="/css/style.css?v=20261006-atomic-game-load">
     <link rel="preload" href="/css/image/background.png" as="image" type="image/png">
     <link rel="preload" href="/js/auth.js?v=20261005-auth-notice-timeout" as="script">
     <link rel="preload" href="/js/game.js" as="script">
     <link rel="preload" href="/js/rating.js" as="script">
-    <link rel="preload" href="/js/app-core.js?v=20261005-auth-fast" as="script">
+    <link rel="preload" href="/js/app-core.js?v=20261006-atomic-game-load" as="script">
 
     <!--
         סגנון קריטי שרץ לפני ה-CSS הראשי:
@@ -363,7 +363,6 @@
                     <div id="board-with-captures" class="board-with-captures">
                         <aside id="material-scale" class="material-scale" aria-label="משוואת כלים שנאכלו"></aside>
                         <div id="chess-board-stage" class="chess-board-stage">
-                            <div id="game-board" class="chess-board"></div>
                         </div>
                     </div>
                     <div class="game-controls">
@@ -508,8 +507,9 @@
     </div>
 
     <div id="game-loading" class="game-loading hidden" role="status" aria-live="polite">
-        <div class="game-loading-bar"><span></span></div>
+        <div class="game-loading-bar" role="progressbar" aria-label="התקדמות טעינת המשחק" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
         <strong>טוען..</strong>
+        <button id="game-loading-dismiss" class="btn btn-secondary hidden" type="button">חזרה</button>
     </div>
 
     <div id="player-preview" class="player-preview hidden" role="button" tabindex="0" aria-label="פתיחת היסטוריית שחקן" onmouseenter="cancelPlayerPreviewClose()" onmouseleave="schedulePlayerPreviewClose()" onclick="openPreviewHistory()" onkeydown="if (event.key === 'Enter' || event.key === ' ') openPreviewHistory()">
@@ -529,13 +529,13 @@
     <script defer src="/js/game.js"></script>
     <script defer src="/js/rating.js"></script>
     <!-- Classic scripts share the app state; keep feature modules in this order. -->
-    <script defer src="/js/app-core.js?v=20261005-auth-fast"></script>
+    <script defer src="/js/app-core.js?v=20261006-atomic-game-load"></script>
     <script defer src="/js/app-admin.js?v=20261005-auth-fast"></script>
-    <script defer src="/js/app-matchmaking.js?v=20261005-auth-fast"></script>
-    <script defer src="/js/app-dashboard.js?v=20261005-auth-fast"></script>
-    <script defer src="/js/app-board.js?v=20261005-auth-fast"></script>
+    <script defer src="/js/app-matchmaking.js?v=20261006-atomic-game-load"></script>
+    <script defer src="/js/app-dashboard.js?v=20261006-atomic-game-load"></script>
+    <script defer src="/js/app-board.js?v=20261006-atomic-game-load"></script>
     <script defer src="/js/app-gameplay.js?v=20261005-auth-fast"></script>
-    <script defer src="/js/app-player-history.js?v=20261005-auth-fast"></script>
+    <script defer src="/js/app-player-history.js?v=20261006-atomic-game-load"></script>
     <script defer src="/js/app-analytics.js?v=20261005-auth-fast"></script>
     <script defer src="/js/app.js?v=20261005-auth-fast"></script>
     <script>

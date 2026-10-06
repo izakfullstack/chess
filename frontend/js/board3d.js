@@ -20,9 +20,8 @@
  *   כל קובץ נטען פעם אחת, ואז משכפל (clone) לכל ריבוע שבו הכלי עומד.
  *
  * --- גיבוי -------------------------------------------------------------
- *   אם ספריית Three.js לא נטענה, או WebGL אינו זמין, או קובץ כלי חסר -
- *   המודול מדווח isAvailable() === false והממשק ממשיך להציג
- *   את הלוח הוותיק (SVG) ללא שינוי בהתנהגות המשחק.
+ *   אם ספריית Three.js או WebGL אינם זמינים, הלוח מדווח על כשל
+ *   והממשק אינו מציג לוח חלופי דו-ממדי.
  * =========================================================================
  */
 
@@ -38,16 +37,16 @@ function normalizePieceType(type) {
 
 /** גובה מבוקש לכל סוג כלי, ביחידות של ריבוע אחד. */
 const TARGET_HEIGHT = {
-    king: 1.02,
-    queen: 0.92,
-    knight: 0.70,
-    bishop: 0.80,
-    rook: 0.60,
-    pawn: 0.50,
+    king: 1.12,
+    queen: 1.01,
+    knight: 0.77,
+    bishop: 0.88,
+    rook: 0.66,
+    pawn: 0.55,
 };
 
 const PIECES_BASE = '/assets/pieces3d/';
-const BOARD_FILE = 'board.glb';
+const CANVAS_OVERSCAN = 1.5;
 
 /** גובה משטח הסימון השקוף שמונח על גבי הלוח (לצביע משבצת). */
 const OVERLAY_Y = 0.006;
@@ -56,9 +55,9 @@ const OVERLAY_Y = 0.006;
 const LIGHT_SQUARE = 0xE8DCC8;
 const DARK_SQUARE = 0x9C7B54;
 const COLOR_SELECTED = 0xF2C14E;
-const COLOR_LEGAL = 0x4ADE80;
+const COLOR_LEGAL = 0x60A5FA;
 const COLOR_CAPTURE = 0xEF4444;
-const COLOR_LAST_MOVE = 0x60A5FA;
+const COLOR_LAST_MOVE = 0x4ADE80;
 
 const state = {
     ready: false,
@@ -75,9 +74,8 @@ const state = {
     squares: [],
     pieces: [],
     models: new Map(),
-    boardModel: null,
-    boardLoaded: false,
-    boardWidth: 8,
+    thumbnails: new Map(),
+    piecesLoaded: false,
     currentBoard: null,
     selected: null,
     legalMoves: [],
@@ -88,7 +86,6 @@ const state = {
     clock: null,
     controls: null,
     cameraApplied: false,
-    fallbackBoard: null,
 };
 
 export function isAvailable() {
@@ -114,7 +111,7 @@ async function loadLibrary() {
         }
         return true;
     } catch (error) {
-        console.warn('[Board3D] Three.js לא נטען, ממשיכים עם הלוח הדו-ממדי:', error);
+        console.error('[Board3D] טעינת Three.js נכשלה:', error);
         return false;
     }
 }
@@ -163,23 +160,16 @@ function buildScene(container) {
     state.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     state.raycaster = new THREE.Raycaster();
 
-    // בקרת מצלמה: סיבוב סביב מרכז הלוח, הזזה וזום בגלגלת - מאפשר לראות
-    // את הכלים העומדים מכל כיוון. אם הספרייה לא נטענת - מבט קבוע.
+    // הסיבוב וההזזה מטופלים יחד עם בקרות הלוח כדי למנוע שני מנגנוני עכבר מתחרים.
+    // OrbitControls remains for camera targeting; board zoom is disabled.
     if (state.OrbitControls) {
         const controls = new state.OrbitControls(state.camera, canvas);
-        controls.target.set(0, 0.4, 0);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.08;
-        controls.enablePan = true;
-        controls.panSpeed = 0.8;
-        controls.screenSpacePanning = false;
-        controls.minDistance = 7;
-        controls.maxDistance = 30;
-        // אין ירידה מתחת לפני הלוח ואין תצוגת-על חדה מדי.
-        controls.minPolarAngle = 0.15;
-        controls.maxPolarAngle = Math.PI / 2 - 0.08;
-        controls.rotateSpeed = 0.75;
-        controls.zoomSpeed = 0.9;
+        controls.target.set(0, 0, 0);
+        controls.enableDamping = false;
+        controls.enablePan = false;
+        controls.enableZoom = false;
+        controls.mouseButtons.LEFT = null;
+        controls.mouseButtons.RIGHT = null;
         state.controls = controls;
     }
 
@@ -199,17 +189,7 @@ function buildFallbackBoard() {
     const group = new THREE.Group();
     group.name = 'fallback-board';
 
-    // מסגרת עץ סביב המשבצות.
-    const frame = new THREE.Mesh(
-        new THREE.BoxGeometry(9.1, 0.35, 9.1),
-        new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.75, metalness: 0 })
-    );
-    frame.position.y = -0.175;
-    frame.receiveShadow = true;
-    frame.castShadow = true;
-    group.add(frame);
-
-    // 64 משבצות בזוגיות בהירה/כהה.
+    // 64 משבצות מוצגות ללא קופסת מסגרת אטומה שמסתירה את שולי הלוח.
     for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
             const isLight = (row + col) % 2 === 0;
@@ -266,53 +246,11 @@ function squarePosition(row, col) {
     return { x: col - 3.5, y: 0, z: row - 3.5 };
 }
 
-/**
- * טוען את קובץ הלוח (board.glb) שמודל ב-Fusion 360.
- *
- * הקוד מיישר את המודל אוטומטית לנקודות שהמשחק מצפה להן:
- * מרכז הלוח על (0,0,0), ופני המשבצות העליונות על y=0.
- * כך גם אם המודל מגיע במיקום או בגודל אחרים - הוא יושב נכון.
- *
- * מחזיר Promise שנמסר עם true רק אם הקובץ נטען בהצלחה.
- */
-function loadBoardModel() {
-    return new Promise(resolve => {
-        new state.GLTFLoader().load(
-            `${PIECES_BASE}${BOARD_FILE}`,
-            gltf => {
-                const root = gltf.scene;
-                if (!root) return resolve(false);
-                const THREE = state.three;
-                const box = new THREE.Box3().setFromObject(root);
-                const size = new THREE.Vector3();
-                box.getSize(size);
-                const center = new THREE.Vector3();
-                box.getCenter(center);
-
-                root.position.x -= center.x;
-                root.position.z -= center.z;
-                root.position.y -= box.min.y;
-
-                root.traverse(obj => {
-                    if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; }
-                });
-
-                state.scene.add(root);
-                state.boardModel = root;
-                state.boardWidth = size.x || 8;
-                resolve(true);
-            },
-            undefined,
-            () => resolve(false)
-        );
-    });
-}
-
 /** מתאים את גודל הקנבס לגודל הקונטיינר. */
-function resize() {
+export function resize() {
     if (!state.renderer || !state.container) return;
-    const w = state.container.clientWidth || 640;
-    const h = state.container.clientHeight || 640;
+    const w = (state.container.clientWidth || 640) * CANVAS_OVERSCAN;
+    const h = (state.container.clientHeight || 640) * CANVAS_OVERSCAN;
     state.renderer.setSize(w, h, false);
     state.camera.aspect = w / Math.max(h, 1);
     state.camera.updateProjectionMatrix();
@@ -322,8 +260,7 @@ function resize() {
  * טוען את 12 קובצי הכלים ומכין אותם לשיכפול.
  * כל קובץ נטען פעם אחת; לכל ריבוע שבו הכלי עומד נוצר clone.
  */
-async function loadPieces() {
-    const THREE = state.three;
+async function loadPieces(onProgress) {
     const loader = new state.GLTFLoader();
     // קובצי ה-GLB דחוסים ב-Draco — חייבים מפענח, כמו ב-pieces3d.
     try {
@@ -334,39 +271,114 @@ async function loadPieces() {
     } catch (error) {
         console.warn('[Board3D] מפענח Draco לא נטען, מנסים בלי דחיסה:', error);
     }
-    const manager = new THREE.LoadingManager();
-
-    const results = await Promise.allSettled(
-        COLORS.flatMap(color => PIECE_TYPES.map(type => loadOne(loader, color, type)))
-    );
+    const assets = COLORS.flatMap(color => PIECE_TYPES.map(type => ({
+        color,
+        type,
+        url: `${PIECES_BASE}${color}-${type}.glb`,
+    })));
+    const progress = new Map(assets.map(asset => [
+        asset.url,
+        { loaded: 0, total: null },
+    ]));
+    const reportProgress = (url, loaded, total) => {
+        progress.set(url, { loaded, total });
+        onProgress?.({
+            loadedBytes: [...progress.values()].reduce((sum, item) => sum + item.loaded, 0),
+            totalBytes: progress.values().every(item => Number.isFinite(item.total))
+                ? [...progress.values()].reduce((sum, item) => sum + item.total, 0)
+                : null,
+        });
+    };
+    const results = await Promise.allSettled(assets.map(asset =>
+        loadOne(loader, asset.url, (loaded, total) => reportProgress(asset.url, loaded, total))
+    ));
 
     let loaded = 0;
+    const failures = [];
     results.forEach((result, index) => {
-        const color = COLORS[Math.floor(index / PIECE_TYPES.length)];
-        const type = PIECE_TYPES[index % PIECE_TYPES.length];
+        const { color, type, url } = assets[index];
         if (result.status === 'fulfilled' && result.value) {
             state.models.set(`${color}-${type}`, prepareModel(result.value, type));
             loaded++;
+        } else {
+            failures.push(url);
         }
     });
 
-    if (loaded === 0) {
-        console.warn('[Board3D] לא נטען אף קובץ כלי - ממשיכים עם הלוח הדו-ממדי.');
+    if (loaded !== assets.length) {
+        console.error(`[Board3D] נטענו ${loaded} מתוך ${assets.length} מודלים.`, failures);
         return false;
     }
-    console.info(`[Board3D] נטענו ${loaded} מתוך 12 קובצי כלי.`);
+
+    buildPieceThumbnails();
+    console.info(`[Board3D] נטענו ${loaded} מודלי כלים והוכנו להצגה.`);
     return true;
 }
 
-/** טוען קובץ כלי בודד ומחזיר את סצנת ה-GLB. */
-function loadOne(loader, color, type) {
-    return new Promise((resolve, reject) => {
-        const url = `/assets/pieces3d/${color}-${type}.glb`;
-        loader.load(url,
-            gltf => resolve(gltf),
-            undefined,
-            error => reject(new Error(`${url}: ${error?.message || 'טעינה נכשלה'}`)));
-    });
+/** טוען GLB בזרם מדיד, כך שסך הבתים מתקדם לפי נתוני ההעברה בפועל. */
+async function loadOne(loader, url, onProgress) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+
+    const headerTotal = Number(response.headers.get('content-length'));
+    const expectedBytes = Number.isFinite(headerTotal) && headerTotal > 0 ? headerTotal : null;
+    const reader = response.body?.getReader();
+    let loadedBytes = 0;
+    let arrayBuffer;
+
+    if (reader) {
+        const chunks = [];
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            loadedBytes += value.byteLength;
+            onProgress(loadedBytes, expectedBytes);
+        }
+        arrayBuffer = await new Blob(chunks).arrayBuffer();
+    } else {
+        arrayBuffer = await response.arrayBuffer();
+        loadedBytes = arrayBuffer.byteLength;
+    }
+
+    onProgress(loadedBytes, expectedBytes ?? loadedBytes);
+    return loader.parseAsync(arrayBuffer, new URL(PIECES_BASE, location.origin).href);
+}
+
+/** מרנדר מראש תמונות ממוזערות מאותם מודלי 3D עבור משוואת הכלים שנאכלו. */
+function buildPieceThumbnails() {
+    const THREE = state.three;
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(1);
+    renderer.setSize(96, 96, false);
+    renderer.setClearColor(0x000000, 0);
+
+    const scene = new THREE.Scene();
+    scene.add(new THREE.AmbientLight(0xffffff, 1.25));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2);
+    keyLight.position.set(3, 5, 4);
+    scene.add(keyLight);
+
+    const camera = new THREE.OrthographicCamera(-0.72, 0.72, 0.72, -0.72, 0.1, 20);
+    camera.position.set(3.2, 3.2, 4.2);
+    camera.lookAt(0, 0.35, 0);
+
+    COLORS.forEach(color => PIECE_TYPES.forEach(type => {
+        const model = state.models.get(`${color}-${type}`);
+        const piece = model.clone(true);
+        piece.rotation.y = type === 'knight' ? Math.PI / 8 : 0;
+        scene.add(piece);
+        renderer.render(scene, camera);
+        state.thumbnails.set(`${color}-${type}`, renderer.domElement.toDataURL('image/png'));
+        scene.remove(piece);
+    }));
+
+    renderer.dispose();
+    renderer.forceContextLoss();
+}
+
+export function getPieceThumbnail(color, type) {
+    return state.thumbnails.get(`${color}-${normalizePieceType(type)}`) || null;
 }
 
 /**
@@ -454,8 +466,11 @@ export function sync(board) {
             if (!mesh) continue;
             const pos = squarePosition(row, col);
             mesh.position.set(pos.x, pos.y, pos.z);
-            // השחור מסובב 180° כדי שיפנה ליריב
-            mesh.rotation.y = cell.color === 'black' ? Math.PI : 0;
+            // השחור וסוסי הלבן מסובבים 180° כדי שיפנו אל מרכז הלוח.
+            const type = normalizePieceType(cell.type);
+            mesh.rotation.y = type === 'knight'
+                ? Math.PI + (cell.color === 'white' ? Math.PI / 6 : -Math.PI / 6)
+                : cell.color === 'black' ? Math.PI : 0;
             mesh.userData.row = row;
             mesh.userData.col = col;
             state.scene.add(mesh);
@@ -594,17 +609,56 @@ export function resetView() {
     if (state.controls) state.controls.update();
 }
 
+/** מסובב את המצלמה סביב מרכז הלוח לפי גרירת העכבר. */
+export function rotateBy(deltaX, deltaY) {
+    if (!state.ready || !state.camera) return;
+    const target = state.controls?.target || new state.three.Vector3(0, 0, 0);
+    const offset = state.camera.position.clone().sub(target);
+    const spherical = new state.three.Spherical().setFromVector3(offset);
+    const sensitivity = Math.PI / 720;
+    spherical.theta += deltaX * sensitivity;
+    spherical.phi = Math.max(0.15, Math.min(Math.PI / 2 - 0.08, spherical.phi + deltaY * sensitivity));
+    state.camera.position.copy(target).add(offset.setFromSpherical(spherical));
+    state.camera.lookAt(target);
+    if (state.controls) state.controls.update();
+}
+
+/** Keeps horizontal rotation moving with the board side under the pointer. */
+export function horizontalRotationDirection(clientY) {
+    if (!state.ready || !state.camera || !state.canvas) return 1;
+    state.camera.updateMatrixWorld();
+    const center = new state.three.Vector3(0, 0, 0).project(state.camera);
+    const rect = state.canvas.getBoundingClientRect();
+    const boardCenterY = rect.top + ((1 - center.y) / 2) * rect.height;
+    return clientY > boardCenterY ? -1 : 1;
+}
+
+/** True only when the pointer ray lands inside one of the 64 board squares. */
+export function isBoardPoint(clientX, clientY) {
+    if (!state.ready || !state.canvas || !state.raycaster || !state.camera) return false;
+    const rect = state.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return false;
+
+    const pointer = new state.three.Vector2(
+        ((clientX - rect.left) / rect.width) * 2 - 1,
+        -((clientY - rect.top) / rect.height) * 2 + 1
+    );
+    state.camera.updateMatrixWorld();
+    state.raycaster.setFromCamera(pointer, state.camera);
+    return state.raycaster.intersectObjects(state.squares, false).length > 0;
+}
+
 function updateCamera() {
     if (!state.camera) return;
     // הלוח הגדול (עד 64rem) ממלא את המסך: מצלמה קרובה יותר ונמוכה יותר.
-    const height = 8.5;
-    const distance = state.flipped ? -10.5 : 10.5;
+    const height = 8.5 * CANVAS_OVERSCAN;
+    const distance = (state.flipped ? -11 : 11) * CANVAS_OVERSCAN;
     state.camera.position.set(0, height, distance);
-    state.camera.lookAt(0, 0, 0);
     if (state.controls) {
-        state.controls.target.set(0, 0.4, 0);
+        state.controls.target.set(0, 0, 0);
         state.controls.update();
     }
+    state.camera.lookAt(0, 0, 0);
     state.cameraApplied = true;
 }
 
@@ -670,7 +724,7 @@ function animate() {
  * מאתחל את הלוח התלת-ממדי.
  * מחזיר Promise שנמסר כאשר המודול מוכן לשימוש, או false אם לא הצליח.
  */
-export async function init(container) {
+export async function init(container, onProgress) {
     if (state.ready) return true;
     if (state.failed) return false;
 
@@ -688,27 +742,21 @@ export async function init(container) {
     try {
         state.container = container;
         buildScene(container);
-        state.canvas.addEventListener('click', handleClick);
-        state.canvas.addEventListener('pointerdown', handlePointerDown);
+        state.container.addEventListener('click', handleClick);
+        state.container.addEventListener('pointerdown', handlePointerDown);
         window.addEventListener('resize', resize);
         updateCamera();
+        state.piecesLoaded = await loadPieces(onProgress);
+        if (!state.piecesLoaded) throw new Error('חלק ממודלי הכלים לא נטענו.');
+        state.ready = true;
+        if (state.currentBoard) sync(state.currentBoard);
         animate();
 
-        // הלוח מוכן מיד. המודל מפיוז'ן והכלים נטענים ברקע ומופיעים כשיסתיימים.
-        state.ready = true;
-
-        loadBoardModel().then(okBoard => {
-            state.boardLoaded = okBoard;
-            if (okBoard && state.currentBoard) sync(state.currentBoard);
-        });
-
-        loadPieces().then(okPieces => {
-            if (okPieces && state.currentBoard) sync(state.currentBoard);
-            state.piecesLoaded = okPieces;
-        });
         return true;
     } catch (error) {
-        console.warn('[Board3D] אתחול נכשל, ממשיכים עם הלוח הדו-ממדי:', error);
+        console.error('[Board3D] אתחול הלוח נכשל:', error);
+        state.failed = true;
+        destroy();
         state.failed = true;
         return false;
     }
@@ -723,25 +771,24 @@ export function destroy() {
         state.controls = null;
     }
     if (state.canvas) {
-        state.canvas.removeEventListener('click', handleClick);
-        state.canvas.removeEventListener('pointerdown', handlePointerDown);
         state.canvas.remove();
+    }
+    if (state.container) {
+        state.container.removeEventListener('click', handleClick);
+        state.container.removeEventListener('pointerdown', handlePointerDown);
     }
     window.removeEventListener('resize', resize);
     if (state.renderer) state.renderer.dispose();
     state.ready = false;
-    if (state.boardModel) {
-        state.scene.remove(state.boardModel);
-        state.boardModel = null;
-    }
     if (state.fallbackBoard) {
         state.scene.remove(state.fallbackBoard);
         state.fallbackBoard = null;
     }
-    state.boardLoaded = false;
     state.pieces = [];
     state.squares = [];
     state.models.clear();
+    state.thumbnails.clear();
+    state.piecesLoaded = false;
 }
 
 /** מחזיר אם קבצי הכלים נטענו בהצלחה. */
@@ -770,8 +817,7 @@ export function stats() {
         ready: state.ready,
         pieces: state.pieces.length,
         models: state.models.size,
-        boardLoaded: Boolean(state.boardLoaded),
-        fallbackBoard: Boolean(state.fallbackBoard),
+        thumbnails: state.thumbnails.size,
         piecesLoaded: Boolean(state.piecesLoaded),
         controls: Boolean(state.controls),
         flipped: state.flipped,

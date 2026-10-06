@@ -123,13 +123,10 @@ window.openInvitationDialog = function(invitationId, senderAccount) {
 function respondToInvitation(accepted) {
     if (!window.activeInvitationId || !auth.currentUser) return;
     const loading = document.getElementById('game-loading');
-    const loadingBar = loading?.querySelector('span');
     if (accepted && loading) {
         loading.classList.remove('hidden');
-        if (loadingBar) {
-            loadingBar.style.transform = 'scaleX(0)';
-            setTimeout(() => { loadingBar.style.transform = 'scaleX(0.35)'; }, 100);
-        }
+        loading.querySelector('.game-loading-bar')?.classList.add('indeterminate');
+        loading.querySelector('strong').textContent = 'מאשר הזמנה…';
     }
     fetch(`/api/games/matchmaking/invitations/${window.activeInvitationId}/respond`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -139,7 +136,6 @@ function respondToInvitation(accepted) {
         window.activeInvitationId = null;
         loadIncomingInvitations();
         if (data.gameId) {
-            showScreen('game');
             loadGame(data.gameId);
         } else {
             loading?.classList.add('hidden');

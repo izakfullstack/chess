@@ -54,12 +54,6 @@ const PAGE_LOADED_AT = Date.now();
 let opponentResignationNoticeShown = false;
 let accountSettingsMessageTimer = null;
 let accountSettingsDirty = false;
-const BOARD_DEFAULT_PAN_Y = '0px';
-const BOARD_DEFAULT_STAGE_TOP = '-2rem';
-const BOARD_DEFAULT_TILT = '30deg';
-const BOARD_DEFAULT_TOP_OFFSET = '-4rem';
-const BOARD_MAX_TILT = 50;
-
 const VALID_SCREENS = new Set([
     'home', 'auth', 'games', 'dashboard', 'account-settings', 'game',
     'player-history', 'admin-login', 'admin'
@@ -109,10 +103,6 @@ function restoreLastScreen() {
             gameEntryHistory = screenHistory.slice();
             lastNonGameScreen = entryScreen;
         }
-        // המחלקה מתווספת לפני הטעינה האסינכרונית, כדי שהדפדפן
-        // יצר את פריסת מסך המשחק הנכונה כבר בטעינה הראשונה.
-        applyScreen('game');
-        suppressInitialScreenAnimation();
         loadGame(lastGameId, historical);
         return;
     }
@@ -143,7 +133,6 @@ function initApp() {
     setupGlobalEvents();
     setupBoardControls();
     setupBoard3D();
-    setupPieces3D();
 
     applyAdminIdentity(localStorage.getItem('admin_username'));
 
@@ -180,7 +169,6 @@ function initApp() {
 
         const gameId = params.get('game');
         if (gameId) {
-            showScreen('game');
             loadGame(gameId);
         }
     });
@@ -358,20 +346,6 @@ function goBack(fallback = lastNonGameScreen || 'home') {
     }
     if (screenHistory[screenHistory.length - 1] === previousScreen) screenHistory.pop();
     applyScreen(previousScreen);
-}
-
-/**
- * מבטל את אנימציית המעבר בין מסכים בטעינה הראשונה בלבד.
- * האנימציה גורמת למסך לקפוץ 10 פיקסלים כלפי מעלה בכל טעינה מחדש,
- * ולכן היא מושבתת רק בפעם הראשונה ואחר כך פועלת כרגיל במעברים ידניים.
- */
-function suppressInitialScreenAnimation() {
-    document.body.classList.add('no-screen-animation');
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-        window.setTimeout(() => {
-            document.body.classList.remove('no-screen-animation');
-        }, 60);
-    }));
 }
 
 /**
@@ -634,15 +608,8 @@ function startSentInvitePolling() {
                 const invitation = freshAccepted[0];
                 const key = String(invitation.id);
 
-                // showScreen עשויה להיחסם בדיאלוג אישור יציאה; אם כך קורה ההזמנה
-                // לא נרשמת כטופלה ותיבדק שוב בסבב הבא, כדי שלא תיבלע לעולם.
-                if (currentScreen !== 'game') {
-                    showScreen('game');
-                }
-                if (currentScreen === 'game') {
-                    handledAcceptedInvites.add(key);
-                    loadGame(invitation.gameId);
-                }
+                handledAcceptedInvites.add(key);
+                loadGame(invitation.gameId);
             })
             .catch(() => { /* מעקב שקט */ });
     }, 4000);

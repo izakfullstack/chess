@@ -123,7 +123,6 @@ function loadPlayerHistoryPage(accountNumber, append) {
 }
 
 window.openHistoricalGame = function(gameId) {
-    showScreen('game');
     loadGame(gameId, true);
 };
 
@@ -137,4 +136,3 @@ function getRatingClass(rating) {
     if (rating >= 1000) return 'rating-poor';
     return 'rating-terrible';
 }
-

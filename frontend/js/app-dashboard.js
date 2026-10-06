@@ -83,121 +83,168 @@ function getStatusText(status) {
     }
 }
 
+let activeGameLoadId = 0;
+let activeGameLoadRequest = null;
+let activeGameLoadProgress = null;
+
+function formatLoadingBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
+    if (bytes < 1024) return `${Math.round(bytes)} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function renderGameLoadingProgress() {
+    const progress = activeGameLoadProgress;
+    if (!progress) return;
+
+    const loading = document.getElementById('game-loading');
+    const bar = loading?.querySelector('.game-loading-bar');
+    const fill = bar?.querySelector('span');
+    const label = loading?.querySelector('strong');
+    if (!loading || !fill || !label) return;
+
+    const loaded = progress.game.loadedBytes + (board3dProgress.loadedBytes || 0);
+    const knownTotal = Number.isFinite(progress.game.totalBytes)
+        && Number.isFinite(board3dProgress.totalBytes)
+        ? progress.game.totalBytes + board3dProgress.totalBytes
+        : null;
+    const ready = progress.game.complete && board3dProgress.complete;
+    const percent = ready
+        ? 100
+        : knownTotal > 0
+            ? Math.min(99, Math.floor((loaded / knownTotal) * 100))
+            : null;
+
+    fill.style.transform = `scaleX(${percent === null ? 0 : percent / 100})`;
+    bar.classList.toggle('indeterminate', percent === null);
+    if (percent === null) {
+        label.textContent = knownTotal === null
+            ? `נטענו ${formatLoadingBytes(loaded)} · ממתין לגודל הקבצים`
+            : `נטענו ${formatLoadingBytes(loaded)} · גודל ההעברה אינו זמין`;
+    } else if (knownTotal === null) {
+        label.textContent = `הטעינה הושלמה · ${formatLoadingBytes(loaded)} נטענו · 100%`;
+    } else {
+        label.textContent = `טוען משחק וכלים · ${formatLoadingBytes(loaded)} / ${formatLoadingBytes(knownTotal)} · ${percent}%`;
+    }
+    bar.setAttribute('aria-valuenow', String(percent ?? 0));
+}
+
+window.addEventListener('board3dprogress', () => {
+    if (activeGameLoadProgress) renderGameLoadingProgress();
+});
+
+function showGameLoadError(error, gameLoadId) {
+    if (gameLoadId !== activeGameLoadId) return;
+    console.error('שגיאה בטעינת המשחק:', error);
+    activeGameLoadProgress = null;
+    activeGameLoadRequest = null;
+    const loading = document.getElementById('game-loading');
+    const label = loading?.querySelector('strong');
+    loading?.classList.add('has-error');
+    const closeButton = document.getElementById('game-loading-dismiss');
+    if (label) label.textContent = 'טעינת המשחק נכשלה. בדוק את החיבור ונסה שוב.';
+    closeButton?.classList.remove('hidden');
+}
+
 function loadGame(gameId, historical = false, silent = false) {
     historicalGameView = historical;
+    const gameLoadId = silent ? activeGameLoadId : ++activeGameLoadId;
     if (!silent) {
-        resetBoardView();
-        // שחזור משחק לא ישאיר את הדפדפן במיקום גלילה ישן מהמסך שממנו המשתמש יצא.
+        activeGameLoadRequest?.abort();
+        activeGameLoadProgress = {
+            game: { loadedBytes: 0, totalBytes: null, complete: false },
+        };
+        const loading = document.getElementById('game-loading');
+        const bar = loading?.querySelector('.game-loading-bar');
+        const dismiss = document.getElementById('game-loading-dismiss');
+        loading?.classList.remove('hidden', 'has-error');
+        bar?.classList.add('indeterminate');
+        if (bar) bar.setAttribute('aria-valuenow', '0');
+        dismiss?.classList.add('hidden');
         window.scrollTo(0, 0);
-    }
-    const loading = document.getElementById('game-loading');
-    const loadingBar = loading?.querySelector('.game-loading-bar span');
-    const loadingText = loading?.querySelector('strong');
-    let loadingVisible = false;
-    let loadingPercent = 0;
-    let loadingHideTimer = null;
-
-    const setLoadingProgress = percent => {
-        if (silent || !loading) return;
-        if (!loadingVisible) {
-            loadingVisible = true;
-            loading.classList.remove('hidden');
-        }
-        loadingPercent = Math.max(loadingPercent, Math.min(100, Math.round(percent)));
-        if (loadingBar) loadingBar.style.transform = `scaleX(${loadingPercent / 100})`;
-        if (loadingText) loadingText.textContent = `טוען.. ${loadingPercent}%`;
-    };
-
-    if (!silent) {
-        loadingPercent = 0;
-        if (loadingBar) loadingBar.style.transform = 'scaleX(0)';
-        if (loadingText) loadingText.textContent = 'טוען.. 0%';
-        loading.classList.remove('hidden');
-        loadingVisible = true;
+        renderGameLoadingProgress();
     }
 
     const xhr = new XMLHttpRequest();
+    if (!silent) activeGameLoadRequest = xhr;
     xhr.open('GET', `/api/games/${gameId}`);
-
     xhr.onprogress = event => {
-        if (!silent && event.lengthComputable && event.total > 0) {
-            // עד 99% בזמן ההעברה; 100% יוגדר רק לאחר קבלת תשובה תקינה
-            setLoadingProgress((event.loaded / event.total) * 99);
-        }
+        if (silent || gameLoadId !== activeGameLoadId) return;
+        activeGameLoadProgress.game.loadedBytes = event.loaded;
+        activeGameLoadProgress.game.totalBytes = event.lengthComputable ? event.total : null;
+        renderGameLoadingProgress();
     };
 
-    xhr.onload = () => {
+    xhr.onload = async () => {
+        if (!silent && gameLoadId !== activeGameLoadId) return;
         try {
-            if (xhr.status < 200 || xhr.status >= 300) {
-                throw new Error(`HTTP ${xhr.status}`);
-            }
+            if (xhr.status < 200 || xhr.status >= 300) throw new Error(`HTTP ${xhr.status}`);
             const game = typeof xhr.response === 'string' ? JSON.parse(xhr.response) : xhr.response;
             if (!game) throw new Error('תשובת משחק ריקה');
+
+            if (!silent) {
+                if (Number.isFinite(activeGameLoadProgress.game.totalBytes)) {
+                    activeGameLoadProgress.game.loadedBytes = activeGameLoadProgress.game.totalBytes;
+                }
+                const boardReady = await board3dReadyPromise;
+                if (gameLoadId !== activeGameLoadId) return;
+                if (!boardReady) throw new Error('הלוח או מודלי הכלים לא נטענו.');
+                activeGameLoadProgress.game.complete = true;
+                renderGameLoadingProgress();
+            }
 
             currentGame = game;
             setUserState('last_game_id', game.id);
             setUserState('last_game_historical', historical ? '1' : '0');
-            if (!silent) {
-                setLoadingProgress(100);
-                clearTimeout(loadingHideTimer);
-                loadingHideTimer = setTimeout(() => {
-                    loading?.classList.add('hidden');
-                    loadingVisible = false;
-                }, 280);
-            }
 
-            setTimeout(() => {
-            // עדכון מסך המשחק רק לאחר שהתקבלו הנתונים המלאים
-            document.getElementById('game-title').textContent = `משחק ${game.id}: שחקן ${game.player1Account} מול שחקן ${game.player2Account}`;
+            if (!silent && currentScreen !== 'game') showScreen('game');
+            else if (!silent) resetBoardView();
+            document.getElementById('game-title').textContent =
+                `משחק ${game.id}: שחקן ${game.player1Account} מול שחקן ${game.player2Account}`;
 
-            // הצגת ניווט היסטוריה רק כאשר נפתח משחק היסטורי
             const gameControls = document.querySelector('.game-controls');
             if (gameControls) gameControls.style.display = historical ? 'flex' : 'none';
-
-            // עדכון ניווט מהלכים - לפני ציור הלוח, כך שסימון "מהלך אחרון"
-            // בתצוגה התלת-ממדית יתבסס על האינדקס הנכון.
             currentMoveIndex = game.moveHistory.length;
-
-            // ציור לוח שחמט
             renderChessBoard(game.board, game.currentTurn);
-
-            // עדכון היסטוריית מהלכים
             updateMoveHistory(game.moveHistory);
-
             document.getElementById('game-move-number').textContent = `מהלך ${currentMoveIndex}`;
 
-            // עדכון סטטוס משחק
             const gameStatus = document.getElementById('game-status');
             gameStatus.textContent = `סטטוס: ${getStatusText(game.status)}`;
             gameStatus.className = `game-status status-${game.status}`;
             gameStatus.style.display = !historical && game.status === 'active' ? 'inline-block' : 'none';
 
-            // המשחק מתבצע באמצעות לחיצה ישירה על ריבועי הלוח.
-            // הפעלת רענון בזמן אמת למשחק פעיל (כדי ששני השחקנים יראו כל מהלך)
             if (game.status === 'active' && !historical) startGamePolling(game.id);
             else stopGamePolling();
-        }, 0);
+
+            if (!silent) {
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                if (gameLoadId !== activeGameLoadId) return;
+                setTimeout(() => {
+                    if (gameLoadId !== activeGameLoadId) return;
+                    document.getElementById('game-loading')?.classList.add('hidden');
+                    activeGameLoadProgress = null;
+                    activeGameLoadRequest = null;
+                }, 320);
+            }
         } catch (error) {
-            if (silent) return;
-            clearTimeout(loadingHideTimer);
-            loadingVisible = false;
-            console.error('שגיאה בטעינת משחק:', error);
-            document.getElementById('game-message').textContent = 'נכשל בטעינת המשחק';
-            document.getElementById('game-message').className = 'form-message error';
-            loading?.classList.add('hidden');
+            if (!silent) showGameLoadError(error, gameLoadId);
+            else console.error('שגיאה ברענון המשחק:', error);
         }
     };
 
     xhr.onerror = () => {
         if (silent) return;
-        clearTimeout(loadingHideTimer);
-        loadingVisible = false;
-        console.error('שגיאת רשת בטעינת המשחק');
-        document.getElementById('game-message').textContent = 'נכשל בטעינת המשחק';
-        document.getElementById('game-message').className = 'form-message error';
-        loading?.classList.add('hidden');
+        showGameLoadError(new Error('שגיאת רשת בטעינת המשחק'), gameLoadId);
     };
 
     xhr.send();
 }
 
+document.getElementById('game-loading-dismiss')?.addEventListener('click', () => {
+    activeGameLoadRequest?.abort();
+    activeGameLoadRequest = null;
+    activeGameLoadProgress = null;
+    document.getElementById('game-loading')?.classList.add('hidden');
+});

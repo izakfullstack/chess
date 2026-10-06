@@ -2,41 +2,40 @@
  * Chessboard rendering, visual controls, and 3D board initialization.
  */
 
+let board3dReadyPromise = Promise.resolve(false);
+let board3dProgress = { loadedBytes: 0, totalBytes: null, complete: false };
+
 /**
  * ציור לוח שחמט
  */
 function resetBoardView() {
-    // בתצוגה התạ-ממדית "מרכוז לוח" מחזיר את המצלמה לנקודת ההתחלה.
-    if (board3d) {
-        board3d.resetView();
-        return;
-    }
     const stage = document.getElementById('chess-board-stage');
-    const board = document.getElementById('game-board');
     if (!stage) return;
 
-    stage.style.setProperty('--board-pan-x', '0px');
-    stage.style.top = BOARD_DEFAULT_STAGE_TOP;
-    stage.style.setProperty('--board-pan-y', BOARD_DEFAULT_PAN_Y);
-    board?.style.setProperty('--board-rotate', '0deg');
-    board?.style.setProperty('--board-tilt-x', BOARD_DEFAULT_TILT);
-    stage.classList.remove('panning', 'rotating');
+    const floating = Boolean(board3d?.isAvailable());
+    stage.classList.toggle('board-floating', floating);
+    stage.style.setProperty('--board-pan-x', floating ? '8px' : '0px');
+    stage.style.setProperty('--board-pan-y', '0px');
+    if (board3d?.isAvailable()) {
+        board3d.resize();
+        board3d.resetView();
+    }
 }
 
 function setupBoardControls() {
     const stage = document.getElementById('chess-board-stage');
-    const board = document.getElementById('game-board');
-    if (!stage || !board || boardControlsBound) return;
+    if (!stage || boardControlsBound) return;
     boardControlsBound = true;
 
     let mode = null;
     let pointerId = null;
     let startX = 0;
     let startY = 0;
+    let lastX = 0;
+    let lastY = 0;
     let startPanX = 0;
     let startPanY = 0;
-    let startRotate = 0;
-    let startTilt = 0;
+    let horizontalRotationDirection = 1;
     let pointerCaptured = false;
 
     const DRAG_THRESHOLD = 4;
@@ -50,7 +49,6 @@ function setupBoardControls() {
         mode = null;
         pointerId = null;
         pointerCaptured = false;
-        stage.classList.remove('panning', 'rotating');
         if (event?.pointerId != null && stage.hasPointerCapture?.(event.pointerId)) {
             stage.releasePointerCapture(event.pointerId);
         }
@@ -65,13 +63,16 @@ function setupBoardControls() {
      * הבדיקה מסתמכת על מה שהדפדפן באמת צייר בנקודה הזו.
      */
     const isOnBoard = event => {
-        const hit = document.elementFromPoint(event.clientX, event.clientY);
-        if (!hit) return false;
-        return board.contains(hit) || hit === board;
+        return Boolean(board3d?.isAvailable()
+            && board3d.isBoardPoint(event.clientX, event.clientY));
     };
 
     stage.addEventListener('pointerdown', event => {
         if (event.button !== 0 && event.button !== 2) return;
+        if (!board3d?.isAvailable()) {
+            event.preventDefault();
+            return;
+        }
         // הלחיצה לא נפלה על הלוח המוצג. מבטלים את ברירת המחדל של הדפדפן
         // כדי שלא יופיע סימון גרירה או תפריט לחיצה ימנית על ריק.
         if (!isOnBoard(event)) {
@@ -84,13 +85,14 @@ function setupBoardControls() {
         pointerId = event.pointerId;
         startX = event.clientX;
         startY = event.clientY;
+        lastX = startX;
+        lastY = startY;
         startPanX = numberOn(stage, '--board-pan-x');
         startPanY = numberOn(stage, '--board-pan-y');
-        startRotate = numberOn(board, '--board-rotate');
-        startTilt = numberOn(board, '--board-tilt-x');
-        stage.classList.toggle('panning', mode === 'pan');
-        stage.classList.toggle('rotating', mode === 'rotate');
-        // הכברת ברירת המחדל גם כאן, כדי שאין סימון גרירת תמונה גם בתוך הלוח.
+        if (mode === 'rotate') {
+            horizontalRotationDirection = board3d.horizontalRotationDirection(startY);
+        }
+        // מבטל את ברירת המחדל כדי שלא תיגרר תמונה ולא ייפתח תפריט העכבר.
         event.preventDefault();
     });
 
@@ -118,15 +120,18 @@ function setupBoardControls() {
         event.preventDefault();
 
         if (mode === 'pan') {
+            stage.classList.add('board-floating');
             stage.style.setProperty('--board-pan-x', `${startPanX + deltaX}px`);
             stage.style.setProperty('--board-pan-y', `${startPanY + deltaY}px`);
             return;
         }
 
-        const nextRotation = startRotate - deltaX * 0.22;
-        board.style.setProperty('--board-rotate', `${nextRotation}deg`);
-        const nextTilt = Math.max(0, Math.min(BOARD_MAX_TILT, startTilt - deltaY * 0.25));
-        board.style.setProperty('--board-tilt-x', `${nextTilt}deg`);
+        board3d.rotateBy(
+            (event.clientX - lastX) * horizontalRotationDirection,
+            event.clientY - lastY
+        );
+        lastX = event.clientX;
+        lastY = event.clientY;
     }, { passive: false });
 
     window.addEventListener('pointerup', stop);
@@ -216,7 +221,8 @@ function renderCapturedPieces() {
     const groupByType = color => {
         const groups = {};
         captured[color].forEach(piece => {
-            (groups[piece.type] = groups[piece.type] || []).push(piece.color);
+            const type = normalizePieceType(piece.type);
+            (groups[type] = groups[type] || []).push(piece.color);
         });
         return groups;
     };
@@ -240,7 +246,14 @@ function renderCapturedPieces() {
             pieces.forEach(() => {
                 const slot = document.createElement('span');
                 slot.className = `material-slot ${color}`;
-                slot.innerHTML = getPieceSvg(type, color);
+                const thumbnail = board3d?.getPieceThumbnail(color, type);
+                if (!thumbnail) throw new Error(`חסרה תמונת תלת־ממד לכלי ${color}-${type}.`);
+                const image = document.createElement('img');
+                image.className = 'material-piece-3d';
+                image.src = thumbnail;
+                image.alt = '';
+                image.setAttribute('aria-hidden', 'true');
+                slot.appendChild(image);
                 row.appendChild(slot);
             });
         };
@@ -260,132 +273,29 @@ function renderCapturedPieces() {
 }
 
 function renderChessBoard(fen, currentTurn) {
-    const boardElement = document.getElementById('game-board');
-    if (!boardElement) return;
-
     const board = game.fenToBoard(fen);
+    if (!board3d?.isAvailable()) return;
 
-    // הלוח התלת-ממדי: אם המודול זמין, הוא מצייר; אחרת ממשיכים
-    // במסירת ה-SVG הוותיקה שמתחת - ללא שינוי בהתנהגות המשחק.
-    if (board3d) {
-        board3d.sync(board);
-        board3d.setFlip(shouldFlipBoard());
+    board3d.sync(board);
+    board3d.setFlip(shouldFlipBoard());
 
-        // סימוני בחירה, מהלכים חוקיים ומהלך אחרון - ישירות לשכבת התלת-ממד.
-        const legalMoves = currentGame?.legalMoves || [];
-        const targets = selectedSquare
-            ? legalMoves
-                .filter(move => Number(move.from?.row) === selectedSquare.row
-                    && Number(move.from?.col) === selectedSquare.col)
-                .map(move => ({ row: Number(move.to.row), col: Number(move.to.col) }))
-            : [];
-        const history = currentGame?.moveHistory || [];
-        const lastIndex = currentMoveIndex > 0 && currentMoveIndex <= history.length
-            ? currentMoveIndex - 1
-            : -1;
-        const lastEntry = lastIndex >= 0 ? history[lastIndex] : null;
-        const lastMove = lastEntry
-            ? { from: game.notationToSquare(lastEntry.from), to: game.notationToSquare(lastEntry.to) }
-            : null;
-        board3d.setMarks({ selected: selectedSquare, legalMoves: targets, lastMove });
-
-        renderCapturedPieces();
-        return;
-    }
-
-    boardElement.innerHTML = '';
-
-    const flipped = shouldFlipBoard();
-
-    for (let displayRow = 0; displayRow < 8; displayRow++) {
-        for (let displayCol = 0; displayCol < 8; displayCol++) {
-            const row = flipped ? 7 - displayRow : displayRow;
-            const col = flipped ? 7 - displayCol : displayCol;
-            const square = document.createElement('div');
-            const piece = board[row][col];
-            const legalMoves = currentGame?.legalMoves || [];
-            const selectedPiece = selectedSquare && (
-                legalMoves.some(move => move.from.row === selectedSquare.row && move.from.col === selectedSquare.col)
-                || piece?.color === currentGame.currentTurn
-            ) ? selectedSquare : null;
-            const isSelectedSquare = selectedPiece && selectedPiece.row === row && selectedPiece.col === col;
-            const canMoveTo = selectedPiece && (
-                legalMoves.some(move =>
-                    move.from.row === selectedPiece.row && move.from.col === selectedPiece.col &&
-                    move.to.row === row && move.to.col === col)
-                || (selectedSquare && game.isValidMove(
-                    board,
-                    { row: selectedSquare.row, col: selectedSquare.col },
-                    { row, col },
-                    board[selectedSquare.row]?.[selectedSquare.col]
-                ))
-            );
-            const squareClasses = [`square`, (row + col) % 2 === 0 ? 'light' : 'dark'];
-            const isCaptureTarget = Boolean(canMoveTo && piece && piece.color !== currentGame.currentTurn);
-            if (isSelectedSquare) squareClasses.push('selected-square');
-            if (canMoveTo) squareClasses.push('validmove');
-            if (isCaptureTarget) squareClasses.push('capture-target');
-            square.className = squareClasses.join(' ');
-            square.dataset.row = row;
-            square.dataset.col = col;
-            if (piece) {
-                const pieceElement = document.createElement('div');
-                pieceElement.className = `piece ${piece.color}${isSelectedSquare ? ' selected-piece' : ''}`;
-                const symbol = getPieceSymbol(piece.type, piece.color);
-                pieceElement.dataset.symbol = symbol;
-                pieceElement.innerHTML = getPieceSvg(piece.type, piece.color);
-                pieceElement.setAttribute('aria-label', `${piece.color === 'white' ? 'כלי לבן' : 'כלי שחור'} ${getPieceTypeName(piece.type)}`);
-                pieceElement.draggable = false;
-                pieceElement.style.userSelect = 'none';
-                pieceElement.style.webkitUserDrag = 'none';
-                pieceElement.dataset.row = row;
-                pieceElement.dataset.col = col;
-                pieceElement.dataset.piece = piece.type;
-                pieceElement.dataset.color = piece.color;
-                pieceElement.addEventListener('click', event => {
-                    event.stopPropagation();
-                    handleSquareClick(row, col);
-                });
-
-                // הגרירה הוסרה: תנועת הכלים מתבצעת בלחיצה על כלי ולאחר מכן על משבצת היעד.
-                square.appendChild(pieceElement);
-            }
-
-            boardElement.appendChild(square);
-        }
-    }
-
+    const legalMoves = currentGame?.legalMoves || [];
+    const targets = selectedSquare
+        ? legalMoves
+            .filter(move => Number(move.from?.row) === selectedSquare.row
+                && Number(move.from?.col) === selectedSquare.col)
+            .map(move => ({ row: Number(move.to.row), col: Number(move.to.col) }))
+        : [];
+    const history = currentGame?.moveHistory || [];
+    const lastIndex = currentMoveIndex > 0 && currentMoveIndex <= history.length
+        ? currentMoveIndex - 1
+        : -1;
+    const lastEntry = lastIndex >= 0 ? history[lastIndex] : null;
+    const lastMove = lastEntry
+        ? { from: game.notationToSquare(lastEntry.from), to: game.notationToSquare(lastEntry.to) }
+        : null;
+    board3d.setMarks({ selected: selectedSquare, legalMoves: targets, lastMove });
     renderCapturedPieces();
-
-    // מאזין יחיד ויציב: אין להוסיף מאזין נוסף בכל רינדור.
-    boardElement.onclick = event => {
-        const square = event.target.closest('.square');
-        if (!square || !boardElement.contains(square)) return;
-        const row = Number.parseInt(square.dataset.row, 10);
-        const col = Number.parseInt(square.dataset.col, 10);
-        if (Number.isInteger(row) && Number.isInteger(col)) handleSquareClick(row, col);
-    };
-    // נטרלת גרירת תמונה: הלוח משתמש רק בקליק ובבקרת העכבר.
-    boardElement.ondragstart = event => event.preventDefault();
-    boardElement.ondragover = event => event.preventDefault();
-    boardElement.ondrop = event => event.preventDefault();
-    boardElement.ondragend = event => event.preventDefault();
-}
-
-/**
- * קבלת סמל כלי שחמט
- */
-function getPieceSymbol(type, color) {
-    // סמלי שחמט מלאים לשני הצבעים; הצבע נקבע מעיצוב ה-CSS.
-    const symbols = {
-        'king': '♚',
-        'queen': '♛',
-        'rook': '♜',
-        'bishop': '♝',
-        'knight': '♞',
-        'pawn': '♟'
-    };
-    return symbols[normalizePieceType(type)] || '';
 }
 
 function getPieceTypeName(type) {
@@ -399,65 +309,11 @@ function getPieceTypeName(type) {
     }[normalizePieceType(type)] || 'כלי';
 }
 
-/**
- * כלים תלת־ממדיים על לוח ה־2D - מחליפים רק את תמונות הכלים;
- * שאר הממשק (לוח, הדגשות, קליקים) לא משתנה כלל.
- *
- * PIECES_3D_ENABLED = true טוען את מודלי ה־GLB ומאפיין אותם לספרייטים
- * עם רקע שקוף, המוחלפים במקום ה־SVG. אם הטעינה נכשלת - ממשיכים ב־SVG.
- */
-const PIECES_3D_ENABLED = true;
-let pieces3dSprites = null;
-
 // fenToBoard מחזיר סוגים בקיצורי FEN (r/n/b/q/k) חוץ מ-pawn.
-// שכבת ההצגה (SVG וספרייטים תלת-ממדיים) משתמשת בשמות המלאים.
 const PIECE_TYPE_ALIASES = { r: 'rook', n: 'knight', b: 'bishop', q: 'queen', k: 'king', p: 'pawn' };
 
 function normalizePieceType(type) {
     return PIECE_TYPE_ALIASES[type] || type;
-}
-
-function getPieceSprite(color, type) {
-    if (!pieces3dSprites || !color || !type) return null;
-    return pieces3dSprites[`${color}-${type}`] || null;
-}
-
-function setupPieces3D() {
-    if (!PIECES_3D_ENABLED) return;
-
-    import('./pieces3d.js')
-        .then(module => module.bakeSprites())
-        .then(sprites => {
-            if (!sprites || !Object.keys(sprites).length) return;
-            pieces3dSprites = sprites;
-            document.body.classList.add('pieces3d-active');
-            // ציור מחדש כדי להחליף את ה־SVG שכבר הוצג בזמן האפייה
-            if (currentGame) renderChessBoard(currentGame.board, currentGame.currentTurn);
-        })
-        .catch(error => {
-            console.info('[app] ספרייטים תלת־ממדיים לא נטענים, ממשיכים עם הכלים הוותיקים:', error);
-        });
-}
-
-/**
- * יצירת כלי שחמט: ספרייט תלת־ממד אם מוכן, אחרת SVG מלא ללא תלות בגופני Unicode.
- */
-function getPieceSvg(type, color) {
-    const normalizedType = normalizePieceType(type);
-    const sprite = getPieceSprite(color, normalizedType);
-    if (sprite) {
-        return `<img class="piece-3d" src="${sprite}" alt="" aria-hidden="true" draggable="false" />`;
-    }
-    const sharedBase = '<path class="piece-base" d="M23 78h54l6 8H17z"/><path class="piece-stem" d="M34 66h32l4 12H30z"/>';
-    const pieces = {
-        king: `<path class="piece-fill" d="M46 8h8v9h9v8h-9v11h-8V25h-9v-8h9z"/><path class="piece-fill" d="M50 34c-8 0-14 7-14 15 0 6 3 10 8 13l-7 8h26l-7-8c5-3 8-7 8-13 0-8-6-15-14-15z"/>${sharedBase}`,
-        queen: `<circle class="piece-fill" cx="22" cy="20" r="6"/><circle class="piece-fill" cx="35" cy="13" r="6"/><circle class="piece-fill" cx="50" cy="10" r="6"/><circle class="piece-fill" cx="65" cy="13" r="6"/><circle class="piece-fill" cx="78" cy="20" r="6"/><path class="piece-fill" d="M20 23l9 28h42l9-28-16 14-14-20-14 20z"/><path class="piece-fill" d="M31 51h38l-4 17H35z"/>${sharedBase}`,
-        rook: `<path class="piece-fill" d="M19 15h13v10h12V15h12v10h12V15h13v27H19z"/><path class="piece-fill" d="M28 42h44l-5 25H33z"/>${sharedBase}`,
-        bishop: `<path class="piece-fill" d="M50 9c9 0 16 7 16 16 0 8-5 14-12 17l5 8-9 9 8 10H42l8-10-9-9 5-8c-7-3-12-9-12-17 0-9 7-16 16-16z"/><path class="piece-detail" d="M38 26l24 9"/>${sharedBase}`,
-        knight: `<path class="piece-fill" d="M29 70l5-24-13-12 10-8 5-13 13 8 18 4c10 3 13 12 8 20l-8 13 5 12z"/><path class="piece-detail" d="M39 31l9 7-10 5"/><circle class="piece-detail-dot" cx="66" cy="34" r="3"/>${sharedBase}`,
-        pawn: `<circle class="piece-fill" cx="50" cy="25" r="15"/><path class="piece-fill" d="M40 38c0 8-8 12-8 20 0 6 4 10 9 12H59c5-2 9-6 9-12 0-8-8-12-8-20z"/>${sharedBase}`
-    };
-    return `<svg class="piece-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">${pieces[normalizedType] || pieces.pawn}</svg>`;
 }
 
 /**
@@ -483,37 +339,42 @@ function findLegalMove(from, to) {
     ) || null;
 }
 
-/**
- * טוען את מודול הלוח התלת-ממדי ומחבר אותו למסך המשחק.
- *
- * BOARD_3D_ENABLED = true: הכלים מוצגים כמודלי GLB עומדים על לוח תלת-ממד
- * עם שליטת מצלמה (סיבוב/זום) - אפשר לראות את הכלים מכל כיוון.
- * לוח ברירת המחדל (2D + ספרייטים) ממשיך לשמש גם אם הטעינה נכשלת.
- *
- * אם הטעינה נכשלת (אין אינטרנט, אין WebGL, קבצי הכלים חסרים)
- * המשתנה board3d נשאר null והלוח הוותיק ממשיך להוצג כמו קודם.
- */
-const BOARD_3D_ENABLED = true;
-
+/** טוען את הלוח והמודלים לפני שמסך המשחק מוצג. */
 function setupBoard3D() {
-    if (!BOARD_3D_ENABLED) return;
-
     const host = document.getElementById('chess-board-stage');
     if (!host) return;
+    host.classList.add('board3d-loading');
 
-    import('./board3d.js')
+    board3dReadyPromise = import('./board3d.js?v=20261006-atomic-game-load')
         .then(async module => {
-            const ready = await module.init(host);
-            if (!ready) return;
+            const ready = await module.init(host, progress => {
+                board3dProgress = { ...progress, complete: false };
+                window.dispatchEvent(new CustomEvent('board3dprogress', { detail: board3dProgress }));
+            });
+            if (!ready) throw new Error('מודול הלוח התלת־ממדי לא הצליח לאתחל.');
 
             board3d = module;
+            host.classList.add('board-floating');
+            host.classList.add('board3d-ready');
+            host.classList.remove('board3d-loading');
+            host.style.setProperty('--board-pan-x', '8px');
+            host.style.setProperty('--board-pan-y', '0px');
+            module.resize();
             module.onSquareClick((row, col) => handleSquareClick(row, col));
-            document.body.classList.add('board3d-active');
+            board3dProgress = { ...board3dProgress, complete: true };
+            window.dispatchEvent(new CustomEvent('board3dprogress', { detail: board3dProgress }));
             // ציור מחדש מיד עם המיקום הנוכחי, אם כבר יש משחק פתוח
             if (currentGame) renderChessBoard(currentGame.board, currentGame.currentTurn);
+            return true;
         })
         .catch(error => {
-            console.info('[app] לוח תלת-ממדי לא נטען, ממשיכים עם הלוח הדו-ממדי:', error);
+            window.dispatchEvent(new CustomEvent('board3dprogress', { detail: board3dProgress }));
+            console.error('[app] לוח התלת־ממד לא נטען:', error);
+            const message = document.getElementById('game-message');
+            if (message) {
+                message.textContent = 'הלוח התלת־ממדי לא נטען. רענן את הדף או נסה בדפדפן התומך ב־WebGL.';
+                message.classList.add('error');
+            }
+            return false;
         });
 }
-
