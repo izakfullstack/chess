@@ -251,7 +251,7 @@ function buildFallbackBoard() {
     addTrim(frameWidth, 8.11, -frameOffset, 0, woodMaterial);
     addTrim(frameWidth, 8.11, frameOffset, 0, woodMaterial);
 
-    const addCoordinate = (label, x, z, rotationY) => {
+    const addCoordinate = (label, x, z, rotationY, rotateText = false) => {
         const canvas = document.createElement('canvas');
         canvas.width = 128;
         canvas.height = 128;
@@ -264,6 +264,10 @@ function buildFallbackBoard() {
         context.textBaseline = 'middle';
         context.shadowColor = 'rgba(35, 19, 9, 0.8)';
         context.shadowBlur = 5;
+        if (rotateText) {
+            context.translate(128, 128);
+            context.rotate(Math.PI);
+        }
         context.fillText(label, 64, 68);
 
         const texture = new THREE.CanvasTexture(canvas);
@@ -288,9 +292,9 @@ function buildFallbackBoard() {
         const file = String.fromCharCode(97 + index);
         const rank = String(8 - index);
         const coordinate = index - 3.5;
-        addCoordinate(file, coordinate, frameOffset, Math.PI);
+        addCoordinate(file, coordinate, frameOffset, Math.PI, true);
         addCoordinate(file, coordinate, -frameOffset, 0);
-        addCoordinate(rank, -frameOffset, coordinate, Math.PI);
+        addCoordinate(rank, -frameOffset, coordinate, Math.PI, true);
         addCoordinate(rank, frameOffset, coordinate, 0);
     }
 

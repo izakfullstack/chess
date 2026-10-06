@@ -1073,7 +1073,7 @@ body.game-screen-active .move-history .move-details {
 }
 
 body.game-screen-active .move-history .move-color {
-    margin-inline-end: 0.2rem;
+    margin-inline-start: 0.3rem;
 }
 
 .move-number {
