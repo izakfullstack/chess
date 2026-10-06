@@ -134,6 +134,10 @@ function showGameLoadError(error, gameLoadId) {
 
 function loadGame(gameId, historical = false, silent = false) {
     historicalGameView = historical;
+    if (!currentGame || String(currentGame.id) !== String(gameId)) {
+        opponentResignationNoticeShown = false;
+        document.getElementById('game-victory-dialog')?.classList.add('hidden');
+    }
     const gameLoadId = silent ? activeGameLoadId : ++activeGameLoadId;
     if (!silent) {
         if (currentScreen !== 'game' && !gameEntryScreen) {

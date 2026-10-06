@@ -279,10 +279,23 @@ function renderCapturedPieces() {
 
 let checkNoticeTimer = null;
 let announcedCheckSquare = null;
+let announcedCheckGameId = null;
 
 function renderChessBoard(fen, currentTurn) {
     const board = game.fenToBoard(fen);
     if (!board3d?.isAvailable()) return;
+
+    const gameId = currentGame?.id ?? null;
+    if (gameId !== announcedCheckGameId) {
+        announcedCheckGameId = gameId;
+        announcedCheckSquare = null;
+        clearTimeout(checkNoticeTimer);
+        const message = document.getElementById('game-message');
+        if (message?.classList.contains('check-notice')) {
+            message.textContent = '';
+            message.className = 'form-message';
+        }
+    }
 
     board3d.sync(board);
     board3d.setFlip(shouldFlipBoard());
@@ -380,7 +393,7 @@ function setupBoard3D() {
     if (!host) return;
     host.classList.add('board3d-loading');
 
-    board3dReadyPromise = import('./board3d.js?v=20261006-move-dots-center-knights')
+    board3dReadyPromise = import('./board3d.js?v=20261006-inward-knights-wood-frame')
         .then(async module => {
             const ready = await module.init(host, progress => {
                 board3dProgress = { ...progress, complete: false };

@@ -570,7 +570,7 @@ export function sync(board) {
 }
 
 /** צוב סימוני המשבצות לפי הבחירה, המהלכים החוקיים והמהלך האחרון. */
-export function setMarks({ selected, legalMoves, lastMove, checkSquare } = {}) {
+export function setMarks({ selected, legalMoves, lastMove, checkSquare = state.checkSquare } = {}) {
     if (!state.ready) return;
     state.selected = selected || null;
     state.legalMoves = Array.isArray(legalMoves) ? legalMoves : [];
