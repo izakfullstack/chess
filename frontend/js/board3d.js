@@ -127,7 +127,7 @@ function buildScene(container) {
 
     const canvas = document.createElement('canvas');
     canvas.className = 'board3d-canvas';
-    container.appendChild(canvas);
+    document.body.appendChild(canvas);
     state.canvas = canvas;
 
     state.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -971,6 +971,21 @@ export function isBoardPoint(clientX, clientY) {
     return state.raycaster.intersectObjects(state.squares, false).length > 0;
 }
 
+/** True when the pointer ray hits the wooden table surface. */
+export function isTablePoint(clientX, clientY) {
+    if (!state.ready || !state.canvas || !state.raycaster || !state.camera || !state.table) return false;
+    const rect = state.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return false;
+
+    const pointer = new state.three.Vector2(
+        ((clientX - rect.left) / rect.width) * 2 - 1,
+        -((clientY - rect.top) / rect.height) * 2 + 1
+    );
+    state.camera.updateMatrixWorld();
+    state.raycaster.setFromCamera(pointer, state.camera);
+    return state.raycaster.intersectObject(state.table, false).length > 0;
+}
+
 function updateCamera() {
     if (!state.camera) return;
     // הלוח הגדול (עד 64rem) ממלא את המסך: מצלמה קרובה יותר ונמוכה יותר.
@@ -1072,6 +1087,7 @@ export async function init(container, onProgress) {
         state.piecesLoaded = await loadPieces(onProgress);
         if (!state.piecesLoaded) throw new Error('חלק ממודלי הכלים לא נטענו.');
         state.ready = true;
+        document.body.classList.add('board3d-scene-ready');
         if (state.currentBoard) sync(state.currentBoard);
         animate();
 
@@ -1096,6 +1112,7 @@ export function destroy() {
     if (state.canvas) {
         state.canvas.remove();
     }
+    document.body.classList.remove('board3d-scene-ready');
     if (state.container) {
         state.container.removeEventListener('click', handleClick);
         state.container.removeEventListener('pointerdown', handlePointerDown);

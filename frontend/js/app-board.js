@@ -34,17 +34,34 @@ function setupBoardControls() {
     let lastY = 0;
     let horizontalRotationDirection = 1;
     let pointerCaptured = false;
+    let captureTarget = null;
 
     const DRAG_THRESHOLD = 4;
+    const interactiveSelector = [
+        'button',
+        'a',
+        'input',
+        'textarea',
+        'select',
+        '[role="button"]',
+        '#move-history',
+        '#material-scale',
+        '.game-controls',
+        '#center-board-global',
+        '#game-message',
+        '.site-header',
+        '#screen-game > .section-header',
+    ].join(',');
 
     const stop = event => {
         if (mode === null) return;
         mode = null;
         pointerId = null;
         pointerCaptured = false;
-        if (event?.pointerId != null && stage.hasPointerCapture?.(event.pointerId)) {
-            stage.releasePointerCapture(event.pointerId);
+        if (event?.pointerId != null && captureTarget?.hasPointerCapture?.(event.pointerId)) {
+            captureTarget.releasePointerCapture(event.pointerId);
         }
+        captureTarget = null;
     };
 
     stage.addEventListener('contextmenu', event => event.preventDefault());
@@ -55,9 +72,9 @@ function setupBoardControls() {
      * ולכן אין להתחיל גרירה או סיבוב מעבר לו.
      * הבדיקה מסתמכת על מה שהדפדפן באמת צייר בנקודה הזו.
      */
-    const isOnBoard = event => {
+    const isOnTable = event => {
         return Boolean(board3d?.isAvailable()
-            && board3d.isBoardPoint(event.clientX, event.clientY));
+            && board3d.isTablePoint(event.clientX, event.clientY));
     };
 
     stage.addEventListener('pointerdown', event => {
@@ -68,7 +85,9 @@ function setupBoardControls() {
         }
         // הלחיצה לא נפלה על הלוח המוצג. מבטלים את ברירת המחדל של הדפדפן
         // כדי שלא יופיע סימון גרירה או תפריט לחיצה ימנית על ריק.
-        if (!isOnBoard(event)) {
+        const onBoard = board3d.isBoardPoint(event.clientX, event.clientY);
+        const canPanFromTable = event.button === 2 && isOnTable(event);
+        if (!onBoard && !canPanFromTable) {
             event.preventDefault();
             return;
         }
@@ -87,9 +106,29 @@ function setupBoardControls() {
         event.preventDefault();
     });
 
-    // הלחיצה הימנית מועברת לעכבר הימני במקום לפתוח תפריט מערכת.
-    stage.addEventListener('mousedown', event => {
-        if (event.button === 2) event.preventDefault();
+    window.addEventListener('pointerdown', event => {
+        if (event.button !== 2
+            || stage.contains(event.target)
+            || !document.body.classList.contains('game-screen-active')
+            || (event.target instanceof Element && event.target.closest(interactiveSelector))) {
+            return;
+        }
+        if (!board3d?.isAvailable() || !isOnTable(event)) return;
+
+        mode = 'pan';
+        pointerId = event.pointerId;
+        startX = event.clientX;
+        startY = event.clientY;
+        lastX = startX;
+        lastY = startY;
+        event.preventDefault();
+    }, true);
+
+    window.addEventListener('contextmenu', event => {
+        if (isOnTable(event)
+            && !(event.target instanceof Element && event.target.closest(interactiveSelector))) {
+            event.preventDefault();
+        }
     });
 
     // מאזינים גלוביים מאפשרים להמשיך לגרור גם אם העכבר יצא מגבולות הלוח.
@@ -100,9 +139,10 @@ function setupBoardControls() {
         if (!pointerCaptured && Math.hypot(deltaX, deltaY) >= DRAG_THRESHOLD) {
             event.preventDefault();
             try {
-                stage.setPointerCapture(pointerId);
+                captureTarget = event.target instanceof Element ? event.target : stage;
+                captureTarget.setPointerCapture(pointerId);
             } catch (error) {
-                // Pointer Capture אינו תמיד זמין, למשל בדפדפן נייד; המאזינים הגלוביים ממשיכים לעבוד.
+                captureTarget = null;
                 console.debug('Pointer capture unavailable; using window listeners.', error);
             }
             pointerCaptured = true;
@@ -384,7 +424,7 @@ function setupBoard3D() {
     if (!host) return;
     host.classList.add('board3d-loading');
 
-    board3dReadyPromise = import('./board3d.js?v=20261006-board-size-pan-bounds')
+    board3dReadyPromise = import('./board3d.js?v=20261006-background-table-drag')
         .then(async module => {
             const ready = await module.init(host, progress => {
                 board3dProgress = { ...progress, complete: false };

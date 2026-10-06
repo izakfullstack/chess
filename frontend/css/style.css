@@ -3042,7 +3042,7 @@ body.game-screen-active #screen-game::after {
     content: '';
     position: fixed;
     inset: 0;
-    z-index: 1201;
+    z-index: -1;
     pointer-events: none;
     background: radial-gradient(
         ellipse at center,
@@ -3316,7 +3316,7 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 0;
+    z-index: 1020;
     width: 100vw;
     height: 100vh;
     height: 100dvh;
@@ -3324,6 +3324,11 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
     touch-action: none;
     pointer-events: none;
     cursor: grab;
+    visibility: hidden;
+}
+
+body.game-screen-active.board3d-scene-ready .board3d-canvas {
+    visibility: visible;
 }
 
 .board3d-canvas:active {
