@@ -335,7 +335,7 @@ function showCheckNotice() {
     const message = document.getElementById('game-message');
     if (!message) return;
 
-    message.textContent = 'שח';
+    message.textContent = 'שח!';
     message.className = 'form-message check-notice';
     clearTimeout(checkNoticeTimer);
     checkNoticeTimer = setTimeout(() => {
@@ -393,7 +393,7 @@ function setupBoard3D() {
     if (!host) return;
     host.classList.add('board3d-loading');
 
-    board3dReadyPromise = import('./board3d.js?v=20261006-wood-coordinates')
+    board3dReadyPromise = import('./board3d.js?v=20261006-knight-coordinates-wood-height')
         .then(async module => {
             const ready = await module.init(host, progress => {
                 board3dProgress = { ...progress, complete: false };

@@ -229,8 +229,8 @@ function buildFallbackBoard() {
         roughness: 0.34,
         metalness: 0.58,
     });
-    const base = new THREE.Mesh(new THREE.BoxGeometry(9.3, 0.1, 9.3), woodMaterial);
-    base.position.set(0, -0.11, 0);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(9.3, 0.2, 9.3), woodMaterial);
+    base.position.set(0, -0.16, 0);
     base.receiveShadow = true;
     group.add(base);
 
@@ -274,12 +274,14 @@ function buildFallbackBoard() {
             depthWrite: false,
             side: THREE.DoubleSide,
         });
+        const orient = new THREE.Group();
+        orient.position.set(x, 0.004, z);
+        orient.rotation.y = rotationY;
         const marker = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.3), material);
         marker.rotation.x = -Math.PI / 2;
-        marker.rotation.y = rotationY;
-        marker.position.set(x, 0.003, z);
         marker.renderOrder = 2;
-        group.add(marker);
+        orient.add(marker);
+        group.add(orient);
     };
 
     for (let index = 0; index < 8; index++) {
@@ -623,9 +625,7 @@ export function sync(board) {
             const type = normalizePieceType(cell.type);
             if (type === 'knight') {
                 const inwardRotation = Math.sign(pos.x) * KNIGHT_INWARD_ANGLE;
-                mesh.rotation.y = cell.color === 'white'
-                    ? inwardRotation + Math.PI
-                    : inwardRotation;
+                mesh.rotation.y = inwardRotation + Math.PI;
             } else {
                 mesh.rotation.y = cell.color === 'black' ? Math.PI : 0;
             }
