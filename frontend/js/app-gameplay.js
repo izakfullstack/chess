@@ -4,6 +4,17 @@
 
 let checkWarningTimer = null;
 
+function getPieceSymbol(type) {
+    return {
+        king: '♚',
+        queen: '♛',
+        rook: '♜',
+        bishop: '♝',
+        knight: '♞',
+        pawn: '♟'
+    }[type] || '';
+}
+
 function handleSquareClick(row, col) {
     if (!currentGame || currentGame.status !== 'active' || historicalGameView) return;
 

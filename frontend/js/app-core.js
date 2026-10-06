@@ -541,15 +541,22 @@ function startGamePolling(gameId, immediately = false) {
                 || previous.currentTurn !== latest.currentTurn
                 || JSON.stringify(previous.moveHistory) !== JSON.stringify(latest.moveHistory);
             const statusChanged = !previous || previous.status !== latest.status;
-            currentGame = latest;
 
             if (movesChanged) {
-                selectedSquare = null;
-                currentMoveIndex = latest.moveHistory.length;
-                renderChessBoard(latest.board, latest.currentTurn);
-                updateMoveHistory(latest.moveHistory);
-                const moveNumber = document.getElementById('game-move-number');
-                if (moveNumber) moveNumber.textContent = `מהלך ${currentMoveIndex}`;
+                currentGame = latest;
+                try {
+                    selectedSquare = null;
+                    currentMoveIndex = latest.moveHistory.length;
+                    renderChessBoard(latest.board, latest.currentTurn);
+                    updateMoveHistory(latest.moveHistory);
+                    const moveNumber = document.getElementById('game-move-number');
+                    if (moveNumber) moveNumber.textContent = `מהלך ${currentMoveIndex}`;
+                } catch (error) {
+                    currentGame = previous;
+                    throw error;
+                }
+            } else {
+                currentGame = latest;
             }
 
             if (movesChanged || statusChanged) {
