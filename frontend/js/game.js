@@ -16,6 +16,14 @@
 const BOARD_SIZE = 8;
 const WHITE = 'white';
 const BLACK = 'black';
+const FEN_PIECE_TYPES = {
+    k: 'king',
+    q: 'queen',
+    r: 'rook',
+    b: 'bishop',
+    n: 'knight',
+    p: 'pawn'
+};
 
 /**
  * יצירת לוח שחמט ריק
@@ -123,7 +131,8 @@ function fenToBoard(fen) {
                 col += parseInt(char, 10);
             } else {
                 const isWhite = char === char.toUpperCase();
-                const pieceType = char.toLowerCase() === 'p' ? 'pawn' : char.toLowerCase();
+                const pieceType = FEN_PIECE_TYPES[char.toLowerCase()];
+                if (!pieceType) throw new Error(`Invalid FEN piece: ${char}`);
                 board[row][col] = { type: pieceType, color: isWhite ? WHITE : BLACK };
                 col++;
             }
