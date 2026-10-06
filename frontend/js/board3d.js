@@ -192,8 +192,35 @@ function buildFallbackBoard() {
     const group = new THREE.Group();
     group.name = 'fallback-board';
 
+    const woodCanvas = document.createElement('canvas');
+    woodCanvas.width = 512;
+    woodCanvas.height = 128;
+    const woodContext = woodCanvas.getContext('2d');
+    if (!woodContext) throw new Error('לא ניתן ליצור מרקם עץ למסגרת הלוח.');
+    const woodGradient = woodContext.createLinearGradient(0, 0, 0, woodCanvas.height);
+    woodGradient.addColorStop(0, '#382318');
+    woodGradient.addColorStop(0.28, '#79502f');
+    woodGradient.addColorStop(0.52, '#54351f');
+    woodGradient.addColorStop(0.76, '#815735');
+    woodGradient.addColorStop(1, '#3d2619');
+    woodContext.fillStyle = woodGradient;
+    woodContext.fillRect(0, 0, woodCanvas.width, woodCanvas.height);
+    for (let index = 0; index < 34; index++) {
+        const y = index * 4 - 6;
+        woodContext.beginPath();
+        woodContext.moveTo(0, y);
+        woodContext.bezierCurveTo(150, y + 7, 330, y - 6, 512, y + 2);
+        woodContext.strokeStyle = index % 4 === 0
+            ? 'rgba(29, 14, 7, 0.3)'
+            : 'rgba(233, 184, 121, 0.12)';
+        woodContext.lineWidth = index % 4 === 0 ? 2 : 1;
+        woodContext.stroke();
+    }
+    const woodTexture = new THREE.CanvasTexture(woodCanvas);
+    woodTexture.colorSpace = THREE.SRGBColorSpace;
     const woodMaterial = new THREE.MeshStandardMaterial({
-        color: 0x57371f,
+        color: 0xffffff,
+        map: woodTexture,
         roughness: 0.68,
         metalness: 0,
     });
@@ -232,7 +259,7 @@ function buildFallbackBoard() {
         if (!context) throw new Error('לא ניתן ליצור סימוני קואורדינטות ללוח.');
         context.clearRect(0, 0, 128, 128);
         context.fillStyle = '#f2dfbd';
-        context.font = 'bold 76px Georgia, serif';
+        context.font = 'bold 88px Georgia, serif';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.shadowColor = 'rgba(35, 19, 9, 0.8)';
@@ -247,7 +274,7 @@ function buildFallbackBoard() {
             depthWrite: false,
             side: THREE.DoubleSide,
         });
-        const marker = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.2), material);
+        const marker = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.3), material);
         marker.rotation.x = -Math.PI / 2;
         marker.rotation.y = rotationY;
         marker.position.set(x, 0.003, z);
