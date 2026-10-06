@@ -734,7 +734,7 @@ input[readonly] {
     position: fixed;
     right: 0.75rem;
     top: 10rem;
-    width: 9rem;
+    width: min(14rem, 30vw);
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -745,18 +745,39 @@ input[readonly] {
     direction: ltr;
 }
 
+.material-scale-header {
+    display: flex;
+    width: 100%;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.material-scale-header span,
+.material-side {
+    width: 50%;
+    min-width: 0;
+}
+
+.material-scale-header .white {
+    color: #ffffff;
+    text-shadow: 0 1px 3px #000000;
+}
+
+.material-scale-header .black {
+    color: #17120f;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.55);
+}
+
 .material-scale:empty {
     padding: 0;
 }
 
-/* שורת זוג - כלי היריב לימין וכלי השחקן לשמאל מבחינת המסך.
-   ללא רקע וללא מסגרת - רק הכלים עצמם. */
 .material-row {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 0.05rem;
+    justify-content: stretch;
+    width: 100%;
     padding: 0.1rem 0.15rem;
     border-radius: 8px;
     background: none;
@@ -764,6 +785,14 @@ input[readonly] {
     box-shadow: none;
     min-height: 2.15rem;
     max-width: 100%;
+}
+
+.material-side {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: center;
+    gap: 0.05rem;
 }
 
 /* הכלים היקרים יותר מקבלים מודגשות קלה בלבד (בלי רקע) */
@@ -2947,7 +2976,7 @@ body.game-screen-active {
         top: 10rem;
         right: 0.3rem;
         left: auto;
-        width: min(7.5rem, 23vw);
+        width: min(10rem, 38vw);
         align-items: flex-start;
         gap: 0.1rem;
         padding: 0.2rem;
@@ -2965,8 +2994,8 @@ body.game-screen-active {
     }
 
     .material-slot {
-        width: 2.2rem;
-        height: 2.2rem;
+        width: 1.85rem;
+        height: 1.85rem;
     }
 
     .game-loading {

@@ -522,12 +522,10 @@ export function sync(board) {
             // השחור וסוסי הלבן מסובבים 180° כדי שיפנו אל מרכז הלוח.
             const type = normalizePieceType(cell.type);
             if (type === 'knight') {
-                const turnTowardCenter = (col < 3.5 ? 1 : -1)
-                    * (cell.color === 'white' ? -1 : 1)
-                    * KNIGHT_INWARD_TURN;
-                mesh.rotation.y = Math.PI
-                    + (cell.color === 'white' ? Math.PI / 6 : -Math.PI / 6)
-                    + turnTowardCenter;
+                const turnTowardCenter = col < 3.5
+                    ? -KNIGHT_INWARD_TURN
+                    : KNIGHT_INWARD_TURN;
+                mesh.rotation.y = Math.PI + turnTowardCenter;
             } else {
                 mesh.rotation.y = cell.color === 'black' ? Math.PI : 0;
             }

@@ -318,9 +318,8 @@ function showScreen(screenName) {
 
     if (currentScreen) screenHistory.push(currentScreen);
     if (screenName === 'game') {
-        gameEntryScreen = currentScreen && currentScreen !== 'game'
-            ? currentScreen
-            : lastNonGameScreen;
+        gameEntryScreen = gameEntryScreen
+            || (currentScreen && currentScreen !== 'game' ? currentScreen : lastNonGameScreen);
         gameEntryHistory = screenHistory.slice();
         // נשמר גם בזיכרון הקבוע, כדי שאחרי רענון הדף כפתור "חזור"
         // יחזיר את השחקן לאותו מסך שממנו נכנס למשחק.

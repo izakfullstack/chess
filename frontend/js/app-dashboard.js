@@ -136,6 +136,12 @@ function loadGame(gameId, historical = false, silent = false) {
     historicalGameView = historical;
     const gameLoadId = silent ? activeGameLoadId : ++activeGameLoadId;
     if (!silent) {
+        if (currentScreen !== 'game' && !gameEntryScreen) {
+            gameEntryScreen = currentScreen || lastNonGameScreen;
+            if (gameEntryScreen && gameEntryScreen !== 'game') {
+                setUserState('game_entry_screen', gameEntryScreen);
+            }
+        }
         activeGameLoadRequest?.abort();
         activeGameLoadProgress = {
             game: { loadedBytes: 0, totalBytes: null, complete: false },

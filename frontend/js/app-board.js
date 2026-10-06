@@ -207,11 +207,8 @@ function getCapturedPiecesByPlayer() {
 
 function renderCapturedPieces() {
     const captured = getCapturedPiecesByPlayer();
-    const viewerColor = getCurrentPlayerColor();
     const scale = document.getElementById('material-scale');
     if (!scale) return;
-
-    const opponentColor = viewerColor === 'white' ? 'black' : 'white';
 
     // ערך הכלי - המלך הכי חשוב למעלה, החייל הכי נמוך למטה
     const PIECE_WEIGHT = { king: 6, queen: 5, rook: 4, bishop: 3, knight: 3, pawn: 1 };
@@ -226,23 +223,27 @@ function renderCapturedPieces() {
         });
         return groups;
     };
-    const enemyGroups = groupByType(opponentColor);
-    const viewerGroups = groupByType(viewerColor);
+    const whiteGroups = groupByType('white');
+    const blackGroups = groupByType('black');
 
     scale.innerHTML = '';
+    const header = document.createElement('div');
+    header.className = 'material-scale-header';
+    header.innerHTML = '<span class="white">לבן</span><span class="black">שחור</span>';
+    scale.appendChild(header);
 
     PIECE_ORDER.forEach(type => {
-        const enemyPieces = enemyGroups[type] || [];
-        const viewerPieces = viewerGroups[type] || [];
-        if (!enemyPieces.length && !viewerPieces.length) return;
+        const whitePieces = whiteGroups[type] || [];
+        const blackPieces = blackGroups[type] || [];
 
         const row = document.createElement('div');
         row.className = 'material-row';
         row.dataset.weight = String(PIECE_WEIGHT[type]);
-        row.setAttribute('aria-label', `${getPieceTypeName(type)}: ${enemyPieces.length} אצל היריב, ${viewerPieces.length} אצל השחקן`);
+        row.setAttribute('aria-label', `${getPieceTypeName(type)} שנאכלו: ${whitePieces.length} לבנים, ${blackPieces.length} שחורים`);
 
-        // כל כלי שנאכל מוצג בפועל. צד שאין לו כלים פשוט לא מוצג - הפער בעצמו מראה את החוסרון.
         const appendGroup = (pieces, color) => {
+            const side = document.createElement('div');
+            side.className = `material-side ${color}`;
             pieces.forEach(() => {
                 const slot = document.createElement('span');
                 slot.className = `material-slot ${color}`;
@@ -254,19 +255,20 @@ function renderCapturedPieces() {
                 image.alt = '';
                 image.setAttribute('aria-hidden', 'true');
                 slot.appendChild(image);
-                row.appendChild(slot);
+                side.appendChild(slot);
             });
+            row.appendChild(side);
         };
 
-        // כלי היריב משמאל, כלי השחקן מימין - ושניהם צמודים כמו במשוואה
-        appendGroup(enemyPieces, opponentColor);
-        appendGroup(viewerPieces, viewerColor);
+        appendGroup(whitePieces, 'white');
+        appendGroup(blackPieces, 'black');
 
         scale.appendChild(row);
     });
 
     const boardWithCaptures = document.getElementById('board-with-captures');
     if (boardWithCaptures) {
+        const viewerColor = getCurrentPlayerColor();
         boardWithCaptures.classList.toggle('viewer-white', viewerColor === 'white');
         boardWithCaptures.classList.toggle('viewer-black', viewerColor === 'black');
     }
