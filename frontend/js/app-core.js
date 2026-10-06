@@ -46,6 +46,7 @@ const screenHistory = [];
 let pendingLeaveScreen = null;
 let leaveConfirmationInProgress = false;
 let gamePollTimer = null;
+let gamePollGeneration = 0;
 let sentInvitePollTimer = null;
 let sentInvitePollInitialized = false;
 let handledAcceptedInvites = new Set();
@@ -513,48 +514,72 @@ function filterRankingRows() {
 /**
  * רענון שקט של המשחק בזמן אמת (כדי ששני השחקנים יראו כל מהלך)
  */
-function startGamePolling(gameId) {
+function startGamePolling(gameId, immediately = false) {
     stopGamePolling();
-    gamePollTimer = setInterval(() => {
+    const generation = gamePollGeneration;
+    const poll = async () => {
+        if (generation !== gamePollGeneration) return;
         if (currentScreen !== 'game') {
             stopGamePolling();
             return;
         }
-        fetch(`/api/games/${gameId}`)
-            .then(response => response.json())
-            .then(latest => {
-                if (currentScreen !== 'game') return;
-                const previous = currentGame;
-                const movesChanged = !previous
-                    || String(previous.id) !== String(latest.id)
-                    || (previous.moveHistory?.length || 0) !== (latest.moveHistory?.length || 0);
-                const statusChanged = !previous || previous.status !== latest.status;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        try {
+            const response = await fetch(`/api/games/${gameId}`, { signal: controller.signal });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const latest = await response.json();
+            if (!latest || typeof latest.board !== 'string' || !Array.isArray(latest.moveHistory)) {
+                throw new Error('Invalid game update response');
+            }
+            if (generation !== gamePollGeneration || currentScreen !== 'game') return;
 
-                if (movesChanged) {
-                    // שינוי בלוח או במהלכים - נדרשת רינדור מחדש מלאה
-                    loadGame(latest.id, historicalGameView, true);
-                } else if (statusChanged) {
-                    // שינוי סטטוס בלבד (למשל היריב כנע) - מעדכנים רק את הכותרת,
-                    // בלי לטעון את המשחק מחדש ולאפס את המעקב.
-                    currentGame = { ...currentGame, ...latest };
-                    const gameStatus = document.getElementById('game-status');
-                    if (gameStatus) {
-                        gameStatus.textContent = `סטטוס: ${getStatusText(latest.status)}`;
-                        gameStatus.className = `game-status status-${latest.status}`;
-                        gameStatus.style.display = !historicalGameView && latest.status === 'active' ? 'inline-block' : 'none';
-                    }
-                    if (latest.status !== 'active') stopGamePolling();
-                }
+            const previous = currentGame;
+            const movesChanged = !previous
+                || String(previous.id) !== String(latest.id)
+                || previous.board !== latest.board
+                || previous.currentTurn !== latest.currentTurn
+                || JSON.stringify(previous.moveHistory) !== JSON.stringify(latest.moveHistory);
+            const statusChanged = !previous || previous.status !== latest.status;
+            currentGame = latest;
 
-                if (previous?.status === 'active' && latest.status === 'completed'
-                    && latest.winnerId != null && String(latest.winnerId) === String(auth.currentUser?.id)
-                    && !opponentResignationNoticeShown) {
-                    opponentResignationNoticeShown = true;
-                    showOpponentResignationNotice();
+            if (movesChanged) {
+                selectedSquare = null;
+                currentMoveIndex = latest.moveHistory.length;
+                renderChessBoard(latest.board, latest.currentTurn);
+                updateMoveHistory(latest.moveHistory);
+                const moveNumber = document.getElementById('game-move-number');
+                if (moveNumber) moveNumber.textContent = `מהלך ${currentMoveIndex}`;
+            }
+
+            if (movesChanged || statusChanged) {
+                const gameStatus = document.getElementById('game-status');
+                if (gameStatus) {
+                    gameStatus.textContent = `סטטוס: ${getStatusText(latest.status)}`;
+                    gameStatus.className = `game-status status-${latest.status}`;
+                    gameStatus.style.display = !historicalGameView && latest.status === 'active' ? 'inline-block' : 'none';
                 }
-            })
-            .catch(() => { /* רענון שקט */ });
-    }, 2500);
+            }
+
+            if (previous?.status === 'active' && latest.status === 'completed'
+                && latest.winnerId != null && String(latest.winnerId) === String(auth.currentUser?.id)
+                && !opponentResignationNoticeShown) {
+                opponentResignationNoticeShown = true;
+                showOpponentResignationNotice();
+            }
+            if (latest.status !== 'active') stopGamePolling();
+        } catch (error) {
+            if (generation === gamePollGeneration) {
+                console.warn('רענון מצב המשחק נכשל; יתבצע ניסיון נוסף:', error);
+            }
+        } finally {
+            clearTimeout(timeout);
+            if (generation === gamePollGeneration && currentScreen === 'game') {
+                gamePollTimer = setTimeout(poll, 2500);
+            }
+        }
+    };
+    gamePollTimer = setTimeout(poll, immediately ? 0 : 2500);
 }
 
 function showOpponentResignationNotice() {
@@ -564,8 +589,9 @@ function showOpponentResignationNotice() {
 }
 
 function stopGamePolling() {
-    if (gamePollTimer) {
-        clearInterval(gamePollTimer);
+    gamePollGeneration++;
+    if (gamePollTimer !== null) {
+        clearTimeout(gamePollTimer);
         gamePollTimer = null;
     }
 }

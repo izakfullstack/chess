@@ -47,6 +47,8 @@ const TARGET_HEIGHT = {
 
 const PIECES_BASE = '/assets/pieces3d/';
 const CANVAS_OVERSCAN = 1.5;
+const THUMBNAIL_SIZE = 128;
+const KNIGHT_INWARD_TILT = Math.PI / 18;
 
 /** גובה משטח הסימון השקוף שמונח על גבי הלוח (לצביע משבצת). */
 const OVERLAY_Y = 0.006;
@@ -350,8 +352,20 @@ function buildPieceThumbnails() {
     const THREE = state.three;
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(1);
-    renderer.setSize(96, 96, false);
+    renderer.setSize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, false);
     renderer.setClearColor(0x000000, 0);
+
+    const scratchCanvas = document.createElement('canvas');
+    scratchCanvas.width = THUMBNAIL_SIZE;
+    scratchCanvas.height = THUMBNAIL_SIZE;
+    const scratchContext = scratchCanvas.getContext('2d', { willReadFrequently: true });
+    const thumbnailCanvas = document.createElement('canvas');
+    thumbnailCanvas.width = THUMBNAIL_SIZE;
+    thumbnailCanvas.height = THUMBNAIL_SIZE;
+    const thumbnailContext = thumbnailCanvas.getContext('2d');
+    if (!scratchContext || !thumbnailContext) {
+        throw new Error('לא ניתן ליצור תמונות ממוזערות לכלי המשחק.');
+    }
 
     const scene = new THREE.Scene();
     scene.add(new THREE.AmbientLight(0xffffff, 1.25));
@@ -369,7 +383,46 @@ function buildPieceThumbnails() {
         piece.rotation.y = type === 'knight' ? Math.PI / 8 : 0;
         scene.add(piece);
         renderer.render(scene, camera);
-        state.thumbnails.set(`${color}-${type}`, renderer.domElement.toDataURL('image/png'));
+        scratchContext.clearRect(0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+        scratchContext.drawImage(renderer.domElement, 0, 0);
+        const { data } = scratchContext.getImageData(0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+        let minX = THUMBNAIL_SIZE;
+        let minY = THUMBNAIL_SIZE;
+        let maxX = -1;
+        let maxY = -1;
+        for (let y = 0; y < THUMBNAIL_SIZE; y++) {
+            for (let x = 0; x < THUMBNAIL_SIZE; x++) {
+                if (data[(y * THUMBNAIL_SIZE + x) * 4 + 3] < 16) continue;
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            }
+        }
+        if (maxX < minX || maxY < minY) {
+            throw new Error(`תמונת הכלי ${color}-${type} ריקה.`);
+        }
+
+        const cropWidth = maxX - minX + 1;
+        const cropHeight = maxY - minY + 1;
+        const padding = Math.max(4, Math.ceil(Math.max(cropWidth, cropHeight) * 0.08));
+        const scale = Math.min(
+            (THUMBNAIL_SIZE - padding * 2) / cropWidth,
+            (THUMBNAIL_SIZE - padding * 2) / cropHeight
+        );
+        const drawWidth = cropWidth * scale;
+        const drawHeight = cropHeight * scale;
+        thumbnailContext.clearRect(0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+        thumbnailContext.imageSmoothingEnabled = true;
+        thumbnailContext.imageSmoothingQuality = 'high';
+        thumbnailContext.drawImage(
+            scratchCanvas,
+            minX, minY, cropWidth, cropHeight,
+            (THUMBNAIL_SIZE - drawWidth) / 2,
+            (THUMBNAIL_SIZE - drawHeight) / 2,
+            drawWidth, drawHeight
+        );
+        state.thumbnails.set(`${color}-${type}`, thumbnailCanvas.toDataURL('image/png'));
         scene.remove(piece);
     }));
 
@@ -471,6 +524,12 @@ export function sync(board) {
             mesh.rotation.y = type === 'knight'
                 ? Math.PI + (cell.color === 'white' ? Math.PI / 6 : -Math.PI / 6)
                 : cell.color === 'black' ? Math.PI : 0;
+            if (type === 'knight') {
+                const tiltTowardCenter = col < 3.5
+                    ? -KNIGHT_INWARD_TILT
+                    : KNIGHT_INWARD_TILT;
+                mesh.rotateOnWorldAxis(new state.three.Vector3(0, 0, 1), tiltTowardCenter);
+            }
             mesh.userData.row = row;
             mesh.userData.col = col;
             state.scene.add(mesh);

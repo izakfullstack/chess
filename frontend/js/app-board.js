@@ -128,7 +128,7 @@ function setupBoardControls() {
 
         board3d.rotateBy(
             (event.clientX - lastX) * horizontalRotationDirection,
-            event.clientY - lastY
+            lastY - event.clientY
         );
         lastX = event.clientX;
         lastY = event.clientY;

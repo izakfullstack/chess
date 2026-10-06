@@ -2,6 +2,8 @@
  * Chess move selection, history navigation, and game actions.
  */
 
+let checkWarningTimer = null;
+
 function handleSquareClick(row, col) {
     if (!currentGame || currentGame.status !== 'active' || historicalGameView) return;
 
@@ -26,6 +28,30 @@ function handleSquareClick(row, col) {
             { row, col },
             selectedPiece
         ));
+        const leavesKingInCheck = clientMoveIsLegal
+            && !legalMove
+            && game.isKingInCheck(board, selectedPiece.color)
+            && game.isKingInCheck(
+                game.makeMove(board, selectedSquare, { row, col }),
+                selectedPiece.color
+            );
+
+        if (leavesKingInCheck) {
+            const message = document.getElementById('game-message');
+            if (message) {
+                message.textContent = 'אתה נמצא ב"שח" יש להגן על המלך';
+                message.className = 'form-message error';
+                clearTimeout(checkWarningTimer);
+                checkWarningTimer = setTimeout(() => {
+                    if (message.textContent === 'אתה נמצא ב"שח" יש להגן על המלך') {
+                        message.textContent = '';
+                        message.className = 'form-message';
+                    }
+                }, 2000);
+            }
+            renderChessBoard(currentGame.board, currentGame.currentTurn);
+            return;
+        }
 
         if ((legalMove || clientMoveIsLegal)
             && selectedPiece?.color === currentGame.currentTurn) {
@@ -221,10 +247,7 @@ function submitMoveToServer(fromSquare, toSquare, promotion = null) {
         gameMessage.className = 'form-message';
 
         if (data.success) {
-            // טעינה מחדש של המשחק לקבלת מצב מעודכן
-            setTimeout(() => {
-                loadGame(currentGame.id, historicalGameView, true);
-            }, 1000);
+            startGamePolling(currentGame.id, true);
         }
     })
     .catch(error => {
@@ -233,4 +256,3 @@ function submitMoveToServer(fromSquare, toSquare, promotion = null) {
         gameMessage.className = 'form-message error';
     });
 }
-

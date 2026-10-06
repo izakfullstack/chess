@@ -87,13 +87,6 @@ let activeGameLoadId = 0;
 let activeGameLoadRequest = null;
 let activeGameLoadProgress = null;
 
-function formatLoadingBytes(bytes) {
-    if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
-    if (bytes < 1024) return `${Math.round(bytes)} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
-
 function renderGameLoadingProgress() {
     const progress = activeGameLoadProgress;
     if (!progress) return;
@@ -117,16 +110,8 @@ function renderGameLoadingProgress() {
             : null;
 
     fill.style.transform = `scaleX(${percent === null ? 0 : percent / 100})`;
-    bar.classList.toggle('indeterminate', percent === null);
-    if (percent === null) {
-        label.textContent = knownTotal === null
-            ? `נטענו ${formatLoadingBytes(loaded)} · ממתין לגודל הקבצים`
-            : `נטענו ${formatLoadingBytes(loaded)} · גודל ההעברה אינו זמין`;
-    } else if (knownTotal === null) {
-        label.textContent = `הטעינה הושלמה · ${formatLoadingBytes(loaded)} נטענו · 100%`;
-    } else {
-        label.textContent = `טוען משחק וכלים · ${formatLoadingBytes(loaded)} / ${formatLoadingBytes(knownTotal)} · ${percent}%`;
-    }
+    bar.classList.remove('indeterminate');
+    label.textContent = percent === null ? 'טוען...' : `טוען... ${percent} %`;
     bar.setAttribute('aria-valuenow', String(percent ?? 0));
 }
 
@@ -159,7 +144,7 @@ function loadGame(gameId, historical = false, silent = false) {
         const bar = loading?.querySelector('.game-loading-bar');
         const dismiss = document.getElementById('game-loading-dismiss');
         loading?.classList.remove('hidden', 'has-error');
-        bar?.classList.add('indeterminate');
+        bar?.classList.remove('indeterminate');
         if (bar) bar.setAttribute('aria-valuenow', '0');
         dismiss?.classList.add('hidden');
         window.scrollTo(0, 0);
