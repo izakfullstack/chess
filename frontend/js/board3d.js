@@ -186,65 +186,23 @@ function buildScene(container) {
 /** יוצר משטח עץ רחב שמתחת ללוח ונע יחד עם זווית המצלמה. */
 function buildTable() {
     const THREE = state.three;
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('לא ניתן ליצור מרקם עץ לשולחן.');
-
-    const base = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-    base.addColorStop(0, '#67452c');
-    base.addColorStop(0.5, '#8a6442');
-    base.addColorStop(1, '#5d3b25');
-    context.fillStyle = base;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-
-    for (let row = 0; row < 8; row++) {
-        const top = row * 64;
-        const plank = context.createLinearGradient(0, top, 0, top + 64);
-        plank.addColorStop(0, 'rgba(35, 20, 11, 0.2)');
-        plank.addColorStop(0.16, 'rgba(205, 157, 102, 0.1)');
-        plank.addColorStop(0.55, 'rgba(32, 18, 10, 0.08)');
-        plank.addColorStop(1, 'rgba(20, 11, 7, 0.28)');
-        context.fillStyle = plank;
-        context.fillRect(0, top, canvas.width, 64);
-
-        context.beginPath();
-        context.moveTo(0, top + 1);
-        context.lineTo(canvas.width, top + 1);
-        context.strokeStyle = 'rgba(26, 14, 8, 0.42)';
-        context.lineWidth = 2;
-        context.stroke();
-
-        for (let line = 0; line < 10; line++) {
-            const y = top + 7 + line * 5;
-            context.beginPath();
-            context.moveTo(-8, y);
-            context.bezierCurveTo(130, y + 5, 360, y - 4, canvas.width + 8, y + 2);
-            context.strokeStyle = line % 3 === 0
-                ? 'rgba(32, 17, 9, 0.2)'
-                : 'rgba(235, 192, 137, 0.11)';
-            context.lineWidth = line % 3 === 0 ? 2 : 1;
-            context.stroke();
-        }
-
-        const seamX = 90 + ((row * 137) % 330);
-        context.beginPath();
-        context.moveTo(seamX, top + 2);
-        context.lineTo(seamX, top + 62);
-        context.strokeStyle = 'rgba(28, 15, 8, 0.38)';
-        context.lineWidth = 2;
-        context.stroke();
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load(
+        '/css/image/Wood%20Working.jpg',
+        loadedTexture => {
+            loadedTexture.colorSpace = THREE.SRGBColorSpace;
+            loadedTexture.wrapS = THREE.RepeatWrapping;
+            loadedTexture.wrapT = THREE.RepeatWrapping;
+            loadedTexture.repeat.set(1.5, 1);
+            loadedTexture.needsUpdate = true;
+        },
+        undefined,
+        error => console.error('[Board3D] טעינת תמונת השולחן נכשלה:', error)
+    );
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(32, 32);
     const material = new THREE.MeshStandardMaterial({
         map: texture,
-        roughness: 0.78,
+        roughness: 0.82,
         metalness: 0,
     });
     const table = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), material);
