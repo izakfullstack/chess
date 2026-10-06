@@ -989,8 +989,8 @@ export function isTablePoint(clientX, clientY) {
 function updateCamera() {
     if (!state.camera) return;
     // הלוח הגדול (עד 64rem) ממלא את המסך: מצלמה קרובה יותר ונמוכה יותר.
-    const height = 6.15;
-    const distance = state.flipped ? -8 : 8;
+    const height = 6.6;
+    const distance = state.flipped ? -8.8 : 8.8;
     state.camera.position.set(0, height, distance);
     if (state.controls) {
         state.controls.target.set(0, 0, 0);
