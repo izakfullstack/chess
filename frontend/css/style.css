@@ -3059,7 +3059,7 @@ body.game-screen-active .site-header {
     position: fixed;
     inset: 0 0 auto;
     width: 100%;
-    z-index: var(--z-popover);
+    z-index: 1301;
 }
 
 body.game-screen-active.profile-menu-open .site-header {
