@@ -12,9 +12,8 @@ function resetBoardView() {
     const stage = document.getElementById('chess-board-stage');
     if (!stage) return;
 
-    const floating = Boolean(board3d?.isAvailable());
-    stage.classList.toggle('board-floating', floating);
-    stage.style.setProperty('--board-pan-x', floating ? '8px' : '0px');
+    stage.classList.remove('board-floating');
+    stage.style.setProperty('--board-pan-x', '0px');
     stage.style.setProperty('--board-pan-y', '0px');
     if (board3d?.isAvailable()) {
         board3d.resize();
@@ -33,16 +32,10 @@ function setupBoardControls() {
     let startY = 0;
     let lastX = 0;
     let lastY = 0;
-    let startPanX = 0;
-    let startPanY = 0;
     let horizontalRotationDirection = 1;
     let pointerCaptured = false;
 
     const DRAG_THRESHOLD = 4;
-    const numberOn = (element, property) => {
-        const value = Number.parseFloat(getComputedStyle(element).getPropertyValue(property));
-        return Number.isFinite(value) ? value : 0;
-    };
 
     const stop = event => {
         if (mode === null) return;
@@ -87,8 +80,6 @@ function setupBoardControls() {
         startY = event.clientY;
         lastX = startX;
         lastY = startY;
-        startPanX = numberOn(stage, '--board-pan-x');
-        startPanY = numberOn(stage, '--board-pan-y');
         if (mode === 'rotate') {
             horizontalRotationDirection = board3d.horizontalRotationDirection(startY);
         }
@@ -120,9 +111,9 @@ function setupBoardControls() {
         event.preventDefault();
 
         if (mode === 'pan') {
-            stage.classList.add('board-floating');
-            stage.style.setProperty('--board-pan-x', `${startPanX + deltaX}px`);
-            stage.style.setProperty('--board-pan-y', `${startPanY + deltaY}px`);
+            board3d.panBy(event.clientX - lastX, event.clientY - lastY);
+            lastX = event.clientX;
+            lastY = event.clientY;
             return;
         }
 
@@ -393,7 +384,7 @@ function setupBoard3D() {
     if (!host) return;
     host.classList.add('board3d-loading');
 
-    board3dReadyPromise = import('./board3d.js?v=20261006-player-facing-details')
+    board3dReadyPromise = import('./board3d.js?v=20261006-wood-table-fullview')
         .then(async module => {
             const ready = await module.init(host, progress => {
                 board3dProgress = { ...progress, complete: false };
@@ -402,10 +393,9 @@ function setupBoard3D() {
             if (!ready) throw new Error('מודול הלוח התלת־ממדי לא הצליח לאתחל.');
 
             board3d = module;
-            host.classList.add('board-floating');
             host.classList.add('board3d-ready');
             host.classList.remove('board3d-loading');
-            host.style.setProperty('--board-pan-x', '8px');
+            host.style.setProperty('--board-pan-x', '0px');
             host.style.setProperty('--board-pan-y', '0px');
             module.resize();
             module.onSquareClick((row, col) => handleSquareClick(row, col));

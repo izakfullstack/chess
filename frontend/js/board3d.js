@@ -47,7 +47,6 @@ const TARGET_HEIGHT = {
 };
 
 const PIECES_BASE = '/assets/pieces3d/';
-const CANVAS_OVERSCAN = 1.5;
 const THUMBNAIL_SIZE = 128;
 
 /** גובה משטח הסימון השקוף שמונח על גבי הלוח (לצביע משבצת). */
@@ -72,6 +71,7 @@ const state = {
     camera: null,
     container: null,
     canvas: null,
+    table: null,
     raycaster: null,
     squares: [],
     pieces: [],
@@ -138,7 +138,7 @@ function buildScene(container) {
     state.renderer.setClearColor(0x000000, 0);
 
     state.scene = new THREE.Scene();
-    state.scene.fog = new THREE.Fog(0x0b1321, 22, 42);
+    state.scene.fog = new THREE.Fog(0x0b1321, 75, 150);
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.65);
     state.scene.add(ambient);
@@ -176,10 +176,84 @@ function buildScene(container) {
         state.controls = controls;
     }
 
+    buildTable();
     buildFallbackBoard();
     buildSquares();
     resize();
     return true;
+}
+
+/** יוצר משטח עץ רחב שמתחת ללוח ונע יחד עם זווית המצלמה. */
+function buildTable() {
+    const THREE = state.three;
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('לא ניתן ליצור מרקם עץ לשולחן.');
+
+    const base = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+    base.addColorStop(0, '#67452c');
+    base.addColorStop(0.5, '#8a6442');
+    base.addColorStop(1, '#5d3b25');
+    context.fillStyle = base;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let row = 0; row < 8; row++) {
+        const top = row * 64;
+        const plank = context.createLinearGradient(0, top, 0, top + 64);
+        plank.addColorStop(0, 'rgba(35, 20, 11, 0.2)');
+        plank.addColorStop(0.16, 'rgba(205, 157, 102, 0.1)');
+        plank.addColorStop(0.55, 'rgba(32, 18, 10, 0.08)');
+        plank.addColorStop(1, 'rgba(20, 11, 7, 0.28)');
+        context.fillStyle = plank;
+        context.fillRect(0, top, canvas.width, 64);
+
+        context.beginPath();
+        context.moveTo(0, top + 1);
+        context.lineTo(canvas.width, top + 1);
+        context.strokeStyle = 'rgba(26, 14, 8, 0.42)';
+        context.lineWidth = 2;
+        context.stroke();
+
+        for (let line = 0; line < 10; line++) {
+            const y = top + 7 + line * 5;
+            context.beginPath();
+            context.moveTo(-8, y);
+            context.bezierCurveTo(130, y + 5, 360, y - 4, canvas.width + 8, y + 2);
+            context.strokeStyle = line % 3 === 0
+                ? 'rgba(32, 17, 9, 0.2)'
+                : 'rgba(235, 192, 137, 0.11)';
+            context.lineWidth = line % 3 === 0 ? 2 : 1;
+            context.stroke();
+        }
+
+        const seamX = 90 + ((row * 137) % 330);
+        context.beginPath();
+        context.moveTo(seamX, top + 2);
+        context.lineTo(seamX, top + 62);
+        context.strokeStyle = 'rgba(28, 15, 8, 0.38)';
+        context.lineWidth = 2;
+        context.stroke();
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(32, 32);
+    const material = new THREE.MeshStandardMaterial({
+        map: texture,
+        roughness: 0.78,
+        metalness: 0,
+    });
+    const table = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), material);
+    table.name = 'wooden-table';
+    table.rotation.x = -Math.PI / 2;
+    table.position.y = -0.26;
+    table.receiveShadow = true;
+    state.scene.add(table);
+    state.table = table;
 }
 
 /**
@@ -357,8 +431,8 @@ function squarePosition(row, col) {
 /** מתאים את גודל הקנבס לגודל הקונטיינר. */
 export function resize() {
     if (!state.renderer || !state.container) return;
-    const w = (state.container.clientWidth || 640) * CANVAS_OVERSCAN;
-    const h = (state.container.clientHeight || 640) * CANVAS_OVERSCAN;
+    const w = window.innerWidth || state.container.clientWidth || 640;
+    const h = window.innerHeight || state.container.clientHeight || 640;
     state.renderer.setSize(w, h, false);
     state.camera.aspect = w / Math.max(h, 1);
     state.camera.updateProjectionMatrix();
@@ -789,6 +863,25 @@ export function rotateBy(deltaX, deltaY) {
     if (state.controls) state.controls.update();
 }
 
+/** מזיז את נקודת המבט מעל השולחן בלי להזיז את הלוח או את ממשק המשחק. */
+export function panBy(deltaX, deltaY) {
+    if (!state.ready || !state.camera || !state.canvas) return;
+    const target = state.controls?.target || new state.three.Vector3(0, 0, 0);
+    const distance = state.camera.position.distanceTo(target);
+    const worldPerPixel = (2 * distance * Math.tan(state.three.MathUtils.degToRad(state.camera.fov) / 2))
+        / Math.max(state.canvas.clientHeight, 1);
+    state.camera.updateMatrixWorld();
+    const right = new state.three.Vector3().setFromMatrixColumn(state.camera.matrixWorld, 0);
+    const up = new state.three.Vector3().setFromMatrixColumn(state.camera.matrixWorld, 1);
+    const shift = right.multiplyScalar(-deltaX * worldPerPixel)
+        .add(up.multiplyScalar(deltaY * worldPerPixel));
+
+    state.camera.position.add(shift);
+    target.add(shift);
+    state.camera.lookAt(target);
+    if (state.controls) state.controls.update();
+}
+
 /** Keeps horizontal rotation moving with the board side under the pointer. */
 export function horizontalRotationDirection(clientY) {
     if (!state.ready || !state.camera || !state.canvas) return 1;
@@ -817,8 +910,8 @@ export function isBoardPoint(clientX, clientY) {
 function updateCamera() {
     if (!state.camera) return;
     // הלוח הגדול (עד 64rem) ממלא את המסך: מצלמה קרובה יותר ונמוכה יותר.
-    const height = 8.5 * CANVAS_OVERSCAN;
-    const distance = (state.flipped ? -11 : 11) * CANVAS_OVERSCAN;
+    const height = 8.5;
+    const distance = state.flipped ? -11 : 11;
     state.camera.position.set(0, height, distance);
     if (state.controls) {
         state.controls.target.set(0, 0, 0);
@@ -949,6 +1042,13 @@ export function destroy() {
     if (state.fallbackBoard) {
         state.scene.remove(state.fallbackBoard);
         state.fallbackBoard = null;
+    }
+    if (state.table) {
+        state.scene.remove(state.table);
+        state.table.geometry.dispose();
+        state.table.material.map?.dispose();
+        state.table.material.dispose();
+        state.table = null;
     }
     state.pieces = [];
     state.squares = [];

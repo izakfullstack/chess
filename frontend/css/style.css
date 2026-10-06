@@ -883,38 +883,17 @@ input[readonly] {
     width: min(100%, 64rem);
     aspect-ratio: 1;
     margin: var(--spacing-md) auto;
-    transform: translate3d(var(--board-pan-x, 0), var(--board-pan-y, 0px), 0);
-    transform-origin: 50% 50%;
     /* מונע גרירת תמונה ובחירת טקסט אם הלחיצה מתחילה מחוץ ללוח המוצג */
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
     -webkit-user-drag: none;
-    /* פרספקטיבה יחידה לכל הלוח – נמצאת כאב ההיט-טסטינג בהטיה */
+    /* הפרספקטיבה של הלוח והשולחן נשלטת כולה על ידי מצלמת Three.js. */
     transform-style: flat;
-    perspective: 1600px;
 }
 
 .chess-board-stage.board3d-loading:not(.board3d-ready) {
     visibility: hidden;
-}
-
-.chess-board-stage.board-floating {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    width: min(96vw, 80rem) !important;
-    max-width: min(96vw, 80rem) !important;
-    height: auto;
-    aspect-ratio: 1;
-    margin: 0 !important;
-    z-index: 1200;
-    touch-action: none;
-    transform: translate3d(
-        calc(-50% + var(--board-pan-x, 0px)),
-        calc(-50% + var(--board-pan-y, 0px)),
-        0
-    );
 }
 
 .game-controls {
@@ -2972,9 +2951,9 @@ html:has(#screen-game.active),
 body.game-screen-active {
     background: radial-gradient(
         circle at center,
-        hsl(37, 17%, 62%) 0%,
-        hsl(35, 22%, 49%) 52%,
-        hsl(32, 29%, 36%) 100%
+        rgba(0, 0, 0, 0) 38%,
+        rgba(0, 0, 0, 0.08) 68%,
+        rgba(0, 0, 0, 0.38) 100%
     ) fixed;
 }
 
@@ -3057,6 +3036,20 @@ body.game-screen-active .main-content {
 body.game-screen-active #screen-game {
     position: relative;
     z-index: 1100;
+}
+
+body.game-screen-active #screen-game::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 1201;
+    pointer-events: none;
+    background: radial-gradient(
+        ellipse at center,
+        transparent 38%,
+        rgba(0, 0, 0, 0.08) 68%,
+        rgba(0, 0, 0, 0.42) 100%
+    );
 }
 
 /* כותרת המסך מעל הלוח, כדי שלוחצה על "חזור" תמיד תגיע לכפתור ולא ללוח */
@@ -3321,13 +3314,13 @@ body.game-screen-active #center-board-global:focus-visible .center-guide-line {
 
 .board3d-canvas {
     display: block;
-    /* Overscan leaves transparent room around the rotating board so the canvas edge cannot crop it. */
-    position: absolute;
-    top: -25%;
-    left: -25%;
-    width: 150%;
-    height: 150%;
-    border-radius: 6px;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
     touch-action: none;
     pointer-events: none;
     cursor: grab;
