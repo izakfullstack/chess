@@ -316,16 +316,20 @@ function showScreen(screenName) {
         return;
     }
 
-    if (currentScreen) screenHistory.push(currentScreen);
     if (screenName === 'game') {
         gameEntryScreen = gameEntryScreen
             || (currentScreen && currentScreen !== 'game' ? currentScreen : lastNonGameScreen);
-        gameEntryHistory = screenHistory.slice();
+        if (!Array.isArray(gameEntryHistory)) {
+            gameEntryHistory = [...screenHistory, gameEntryScreen];
+        }
+        screenHistory.splice(0, screenHistory.length, ...gameEntryHistory);
         // נשמר גם בזיכרון הקבוע, כדי שאחרי רענון הדף כפתור "חזור"
         // יחזיר את השחקן לאותו מסך שממנו נכנס למשחק.
         if (gameEntryScreen && gameEntryScreen !== 'game') {
             setUserState('game_entry_screen', gameEntryScreen);
         }
+    } else if (currentScreen) {
+        screenHistory.push(currentScreen);
     }
     if (screenName !== 'game' && currentScreen !== 'game') lastNonGameScreen = screenName;
     applyScreen(screenName);

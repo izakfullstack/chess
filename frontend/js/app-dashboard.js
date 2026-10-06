@@ -138,6 +138,7 @@ function loadGame(gameId, historical = false, silent = false) {
     if (!silent) {
         if (currentScreen !== 'game' && !gameEntryScreen) {
             gameEntryScreen = currentScreen || lastNonGameScreen;
+            gameEntryHistory = [...screenHistory, gameEntryScreen];
             if (gameEntryScreen && gameEntryScreen !== 'game') {
                 setUserState('game_entry_screen', gameEntryScreen);
             }
