@@ -867,19 +867,83 @@ export function rotateBy(deltaX, deltaY) {
 export function panBy(deltaX, deltaY) {
     if (!state.ready || !state.camera || !state.canvas) return;
     const target = state.controls?.target || new state.three.Vector3(0, 0, 0);
+    const width = state.canvas.clientWidth;
+    const height = state.canvas.clientHeight;
+    if (!width || !height) return;
+
+    state.camera.updateMatrixWorld();
     const distance = state.camera.position.distanceTo(target);
     const worldPerPixel = (2 * distance * Math.tan(state.three.MathUtils.degToRad(state.camera.fov) / 2))
-        / Math.max(state.canvas.clientHeight, 1);
-    state.camera.updateMatrixWorld();
+        / height;
     const right = new state.three.Vector3().setFromMatrixColumn(state.camera.matrixWorld, 0);
     const up = new state.three.Vector3().setFromMatrixColumn(state.camera.matrixWorld, 1);
-    const shift = right.multiplyScalar(-deltaX * worldPerPixel)
-        .add(up.multiplyScalar(deltaY * worldPerPixel));
+    const shiftX = right.multiplyScalar(-deltaX * worldPerPixel);
+    const shiftY = up.multiplyScalar(deltaY * worldPerPixel);
+    const boundedShiftX = limitPanShift(shiftX, target, width, height);
+    const shiftedTarget = target.clone().add(boundedShiftX);
+    const boundedShiftY = limitPanShift(shiftY, shiftedTarget, width, height, boundedShiftX);
+    const shift = boundedShiftX.add(boundedShiftY);
+    if (shift.lengthSq() < 1e-12) return;
 
     state.camera.position.add(shift);
     target.add(shift);
     state.camera.lookAt(target);
     if (state.controls) state.controls.update();
+}
+
+function limitPanShift(requestedShift, target, width, height, existingShift = new state.three.Vector3()) {
+    const THREE = state.three;
+    const candidateCamera = state.camera.clone();
+    const isVisibleEnough = fraction => {
+        const shift = existingShift.clone().addScaledVector(requestedShift, fraction);
+        candidateCamera.position.copy(state.camera.position).add(shift);
+        candidateCamera.lookAt(target.clone().add(shift));
+        candidateCamera.updateMatrixWorld(true);
+
+        const bounds = getBoardScreenBounds(width, height, candidateCamera);
+        const boardWidth = bounds.maxX - bounds.minX;
+        const boardHeight = bounds.maxY - bounds.minY;
+        const visibleWidth = Math.min(boardWidth / 2, width);
+        const visibleHeight = Math.min(boardHeight / 2, height);
+        const overlapWidth = Math.max(0, Math.min(bounds.maxX, width) - Math.max(bounds.minX, 0));
+        const overlapHeight = Math.max(0, Math.min(bounds.maxY, height) - Math.max(bounds.minY, 0));
+        return overlapWidth >= visibleWidth - 0.5 && overlapHeight >= visibleHeight - 0.5;
+    };
+
+    if (isVisibleEnough(1)) return requestedShift.clone();
+
+    let min = 0;
+    let max = 1;
+    for (let iteration = 0; iteration < 16; iteration++) {
+        const middle = (min + max) / 2;
+        if (isVisibleEnough(middle)) min = middle;
+        else max = middle;
+    }
+    return requestedShift.clone().multiplyScalar(min);
+}
+
+function getBoardScreenBounds(width, height, camera = state.camera) {
+    const THREE = state.three;
+    const corners = [
+        [-4.65, -4.65],
+        [-4.65, 4.65],
+        [4.65, -4.65],
+        [4.65, 4.65],
+    ];
+    camera.updateMatrixWorld(true);
+    const points = corners.map(([x, z]) => (
+        new THREE.Vector3(x, 0, z).project(camera)
+    ));
+    return points.reduce((bounds, point) => {
+        const x = ((point.x + 1) / 2) * width;
+        const y = ((1 - point.y) / 2) * height;
+        return {
+            minX: Math.min(bounds.minX, x),
+            maxX: Math.max(bounds.maxX, x),
+            minY: Math.min(bounds.minY, y),
+            maxY: Math.max(bounds.maxY, y),
+        };
+    }, { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
 }
 
 /** Keeps horizontal rotation moving with the board side under the pointer. */
@@ -910,8 +974,8 @@ export function isBoardPoint(clientX, clientY) {
 function updateCamera() {
     if (!state.camera) return;
     // הלוח הגדול (עד 64rem) ממלא את המסך: מצלמה קרובה יותר ונמוכה יותר.
-    const height = 8.5;
-    const distance = state.flipped ? -11 : 11;
+    const height = 7.65;
+    const distance = state.flipped ? -9.9 : 9.9;
     state.camera.position.set(0, height, distance);
     if (state.controls) {
         state.controls.target.set(0, 0, 0);

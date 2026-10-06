@@ -384,7 +384,7 @@ function setupBoard3D() {
     if (!host) return;
     host.classList.add('board3d-loading');
 
-    board3dReadyPromise = import('./board3d.js?v=20261006-wood-table-fullview')
+    board3dReadyPromise = import('./board3d.js?v=20261006-board-size-pan-bounds')
         .then(async module => {
             const ready = await module.init(host, progress => {
                 board3dProgress = { ...progress, complete: false };
