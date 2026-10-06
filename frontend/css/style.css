@@ -2209,6 +2209,20 @@ body.profile-menu-open {
 
 body.profile-menu-open .site-header {
     z-index: calc(var(--z-modal) + 1);
+    background: transparent;
+    pointer-events: none;
+}
+
+body.profile-menu-open .site-header .profile-button,
+body.profile-menu-open .site-header .profile-menu {
+    pointer-events: auto;
+}
+
+body.profile-menu-open .site-header .mobile-menu-toggle,
+body.profile-menu-open .site-header .header-right,
+body.profile-menu-open .site-header .mobile-menu > :not(.connected-account),
+body.profile-menu-open .site-header .connected-account > :not(#profile-open):not(#profile-menu) {
+    visibility: hidden;
 }
 
 .profile-menu {
