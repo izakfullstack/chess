@@ -307,8 +307,8 @@ function getPieceTypeName(type) {
     return {
         king: 'מלך',
         queen: 'מלכה',
-        rook: 'רוכב',
-        bishop: 'פרש',
+        rook: 'צריח',
+        bishop: 'רץ',
         knight: 'סוס',
         pawn: 'חייל'
     }[normalizePieceType(type)] || 'כלי';
