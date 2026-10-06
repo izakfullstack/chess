@@ -1059,32 +1059,22 @@ router.post('/:id/move', requireAuth, (req, res) => {
 
                             // Update game status if game ended
                             if (gameState === 'checkmate' || gameState === 'stalemate') {
+                                // שומרים את מצב הסיום והמנצח באותה פעולת DB, כדי שלקוחות
+                                // לא יקראו משחק שהסתיים לפני שמזהה המנצח נשמר.
+                                const winnerId = gameState === 'checkmate'
+                                    ? ((game.player1_color || WHITE) === currentPlayer
+                                        ? game.player1_id
+                                        : game.player2_id)
+                                    : null;
                                 db.run(
-                                    'UPDATE games SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?',
-                                    [gameState === 'checkmate' ? 'completed' : 'completed', gameId],
+                                    'UPDATE games SET status = ?, winner_id = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?',
+                                    ['completed', winnerId, gameId],
                                     (updateErr) => {
                                         if (updateErr) {
                                             return res.status(500).json({ error: 'Failed to update game status' });
                                         }
 
-                                        if (gameState === 'checkmate') {
-                                            // הזוכר הוא בעל הצבע שביצע את המהלך המניח - לא "שחקן 1" בהכרח.
-                                            const winnerId = (game.player1_color || WHITE) === currentPlayer
-                                                ? game.player1_id
-                                                : game.player2_id;
-                                            db.run(
-                                                'UPDATE games SET winner_id = ? WHERE id = ?',
-                                                [winnerId, gameId],
-                                                (winnerErr) => {
-                                                    if (winnerErr) {
-                                                        return res.status(500).json({ error: 'Failed to update winner' });
-                                                    }
-                                                    updateGameStatusAndRating(gameId, winnerId);
-                                                }
-                                            );
-                                        } else {
-                                            updateGameStatusAndRating(gameId, null);
-                                        }
+                                        updateGameStatusAndRating(gameId, winnerId);
                                     }
                                 );
                             }

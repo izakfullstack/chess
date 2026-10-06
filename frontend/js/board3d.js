@@ -27,6 +27,7 @@
 
 const PIECE_TYPES = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
 const COLORS = ['white', 'black'];
+const KNIGHT_INWARD_ANGLE = Math.PI / 12;
 
 // fenToBoard מחזיר קיצורי FEN (r/n/b/q/k) חוץ מ-pawn — ממפה לשמות המלאים של קבצי ה-GLB.
 const PIECE_TYPE_ALIASES = { r: 'rook', n: 'knight', b: 'bishop', q: 'queen', k: 'king', p: 'pawn' };
@@ -550,10 +551,10 @@ export function sync(board) {
             if (!mesh) continue;
             const pos = squarePosition(row, col);
             mesh.position.set(pos.x, pos.y, pos.z);
-            // סיבוב הסוס מחושב מהמשבצת אל מרכז הלוח; שאר הכלים פונים ליריב.
+            // הסוסים פונים בעיקר ליריב, עם סטייה קלה לכיוון מרכז הלוח.
             const type = normalizePieceType(cell.type);
             if (type === 'knight') {
-                const inwardRotation = Math.atan2(pos.x, pos.z);
+                const inwardRotation = Math.sign(pos.x) * KNIGHT_INWARD_ANGLE;
                 mesh.rotation.y = cell.color === 'white'
                     ? inwardRotation + Math.PI
                     : inwardRotation;
