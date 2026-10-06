@@ -41,6 +41,7 @@ let historyLoading = false;
 let historyFinished = false;
 let previousScreenBeforeHistory = 'games';
 let gameEntryHistory = null;
+let gameEntryScreen = null;
 let lastNonGameScreen = 'home';
 const screenHistory = [];
 let pendingLeaveScreen = null;
@@ -100,6 +101,7 @@ function restoreLastScreen() {
         const entryKey = getUserStateKey('game_entry_screen');
         const entryScreen = entryKey ? localStorage.getItem(entryKey) : null;
         if (entryScreen && VALID_SCREENS.has(entryScreen) && entryScreen !== 'game') {
+            gameEntryScreen = entryScreen;
             screenHistory.push(entryScreen);
             gameEntryHistory = screenHistory.slice();
             lastNonGameScreen = entryScreen;
@@ -316,10 +318,15 @@ function showScreen(screenName) {
 
     if (currentScreen) screenHistory.push(currentScreen);
     if (screenName === 'game') {
+        gameEntryScreen = currentScreen && currentScreen !== 'game'
+            ? currentScreen
+            : lastNonGameScreen;
         gameEntryHistory = screenHistory.slice();
         // נשמר גם בזיכרון הקבוע, כדי שאחרי רענון הדף כפתור "חזור"
         // יחזיר את השחקן לאותו מסך שממנו נכנס למשחק.
-        if (currentScreen) setUserState('game_entry_screen', currentScreen);
+        if (gameEntryScreen && gameEntryScreen !== 'game') {
+            setUserState('game_entry_screen', gameEntryScreen);
+        }
     }
     if (screenName !== 'game' && currentScreen !== 'game') lastNonGameScreen = screenName;
     applyScreen(screenName);
@@ -330,12 +337,13 @@ function goBack(fallback = lastNonGameScreen || 'home') {
     // נפתח אוטומטית ממעקב הזמנות) - משתמשים במסך המקור שנשמר בזיכרון הקבוע,
     // כדי שכפתור "חזור" לא יקפוץ בטעות לדף הראשי.
     let previousScreen = getPreviousScreen(fallback);
-    if (previousScreen === 'home' && currentScreen === 'game') {
+    if (currentScreen === 'game') {
         const entryKey = getUserStateKey('game_entry_screen');
         const entryScreen = entryKey ? localStorage.getItem(entryKey) : null;
-        if (entryScreen && VALID_SCREENS.has(entryScreen) && entryScreen !== 'game') {
-            previousScreen = entryScreen;
-        }
+        const candidates = [gameEntryScreen, entryScreen, lastNonGameScreen, previousScreen, fallback];
+        previousScreen = candidates.find(screen =>
+            screen && screen !== 'game' && VALID_SCREENS.has(screen)
+        ) || 'home';
     }
     if (shouldWarnBeforeLeavingGame(previousScreen)) {
         pendingLeaveScreen = previousScreen;
@@ -357,6 +365,7 @@ function applyScreen(screenName) {
     if (screenName !== 'game') {
         stopGamePolling();
         if (currentGame) clearPersistedGameState();
+        gameEntryScreen = null;
         document.getElementById('game-loading')?.classList.add('hidden');
     }
 
@@ -456,6 +465,7 @@ function confirmLeaveGame() {
             screenHistory.splice(0, screenHistory.length, ...gameEntryHistory);
             gameEntryHistory = null;
         }
+        gameEntryScreen = null;
         if (screenHistory[screenHistory.length - 1] === target) screenHistory.pop();
         if (target === '__logout__') {
             auth.currentUser = null;

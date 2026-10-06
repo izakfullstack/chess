@@ -37,18 +37,18 @@ function normalizePieceType(type) {
 
 /** גובה מבוקש לכל סוג כלי, ביחידות של ריבוע אחד. */
 const TARGET_HEIGHT = {
-    king: 1.12,
-    queen: 1.01,
-    knight: 0.77,
-    bishop: 0.88,
-    rook: 0.66,
-    pawn: 0.55,
+    king: 1.2,
+    queen: 1.09,
+    knight: 0.83,
+    bishop: 0.95,
+    rook: 0.71,
+    pawn: 0.59,
 };
 
 const PIECES_BASE = '/assets/pieces3d/';
 const CANVAS_OVERSCAN = 1.5;
 const THUMBNAIL_SIZE = 128;
-const KNIGHT_INWARD_TILT = Math.PI / 18;
+const KNIGHT_INWARD_TURN = Math.PI / 18;
 
 /** גובה משטח הסימון השקוף שמונח על גבי הלוח (לצביע משבצת). */
 const OVERLAY_Y = 0.006;
@@ -521,14 +521,15 @@ export function sync(board) {
             mesh.position.set(pos.x, pos.y, pos.z);
             // השחור וסוסי הלבן מסובבים 180° כדי שיפנו אל מרכז הלוח.
             const type = normalizePieceType(cell.type);
-            mesh.rotation.y = type === 'knight'
-                ? Math.PI + (cell.color === 'white' ? Math.PI / 6 : -Math.PI / 6)
-                : cell.color === 'black' ? Math.PI : 0;
             if (type === 'knight') {
-                const tiltTowardCenter = col < 3.5
-                    ? -KNIGHT_INWARD_TILT
-                    : KNIGHT_INWARD_TILT;
-                mesh.rotateOnWorldAxis(new state.three.Vector3(0, 0, 1), tiltTowardCenter);
+                const turnTowardCenter = (col < 3.5 ? 1 : -1)
+                    * (cell.color === 'white' ? -1 : 1)
+                    * KNIGHT_INWARD_TURN;
+                mesh.rotation.y = Math.PI
+                    + (cell.color === 'white' ? Math.PI / 6 : -Math.PI / 6)
+                    + turnTowardCenter;
+            } else {
+                mesh.rotation.y = cell.color === 'black' ? Math.PI : 0;
             }
             mesh.userData.row = row;
             mesh.userData.col = col;
