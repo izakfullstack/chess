@@ -948,7 +948,7 @@ export function isTablePoint(clientX, clientY) {
 function updateCamera() {
     if (!state.camera) return;
     // מיקום ברירת המחדל מעט מעל מרכז הפריים.
-    const targetY = -0.3;
+    const targetY = -0.65;
     const height = 6.6 + targetY;
     const distance = state.flipped ? -8.8 : 8.8;
     state.camera.position.set(0, height, distance);
